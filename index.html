@@ -9,55 +9,65 @@
     <title>DropZone — local file tools</title>
   </head>
   <body>
-    <header class="app-header"><div class="shell"><span class="brand">DropZone</span><span class="preview-label">Local preview · 0.1</span></div></header>
+    <header class="app-header"><div class="shell"><div class="brand-group"><span class="brand">DropZone</span><span class="brand-description">Local file tools</span></div><a class="maker-link" href="https://github.com/Spotless-ai" target="_blank" rel="noopener noreferrer">By Spotless <span aria-hidden="true">↗</span></a></div></header>
     <main class="shell workspace">
-      <div class="intro"><h1>File tools</h1><p>Convert images, make a ZIP, or put images into a PDF.</p></div>
       <form id="tool-form">
-        <div class="tool-selection">
-          <label for="operation">Tool</label>
-          <select id="operation" name="operation">
-            <option value="images">Convert images</option>
-            <option value="zip">Create ZIP</option>
-            <option value="pdf">Images to PDF</option>
-          </select>
+        <div class="tool-nav" role="group" aria-label="File tool">
+          <button type="button" data-operation="images" aria-pressed="true">Images</button>
+          <button type="button" data-operation="zip" aria-pressed="false">Create ZIP</button>
+          <button type="button" data-operation="pdf" aria-pressed="false">Images to PDF</button>
         </div>
+        <div class="workspace-heading"><h1 id="tool-title">Convert images</h1><p id="tool-description">Change the format. Keep the original.</p></div>
         <section class="work-panel" aria-labelledby="tool-title">
-          <div class="panel-head"><h2 id="tool-title">Convert images</h2><p id="tool-description">Save JPEG, PNG or WebP images in a different format or size.</p></div>
-          <div id="drop-area" class="drop-area">
-            <p>Drop files here, or choose them from your device.</p>
-            <label class="file-picker">Choose files<input id="files" type="file" multiple accept="image/jpeg,image/png,image/webp" /></label>
-            <p class="small" id="file-help">JPEG, PNG or WebP · up to 25 MB per image · 100 MB total</p>
-          </div>
-          <div class="file-list-head"><h3>Selected files <span id="file-count">(0)</span></h3><button id="clear" type="button" disabled>Clear</button></div>
-          <p id="empty-list" class="small">No files selected.</p>
-          <ol id="file-list" aria-label="Selected files in processing order"></ol>
-          <fieldset id="image-options">
-            <legend>Output</legend>
-            <div class="options-grid">
-              <label>Format<select id="format"><option value="image/jpeg">JPEG</option><option value="image/png">PNG</option><option value="image/webp">WebP</option></select></label>
-              <label>Quality <span id="quality-value">85%</span><input id="quality" type="range" min="10" max="100" step="5" value="85" /></label>
-              <label>Longest edge<input id="max-edge" type="number" min="1" max="12000" step="1" placeholder="Keep original size" /><span class="small">Pixels; smaller images are not enlarged.</span></label>
+          <div class="work-grid">
+            <div class="files-pane">
+              <div id="drop-area" class="drop-area">
+                <svg class="upload-icon" width="36" height="36" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M18 24V6m-7 7 7-7 7 7M7 23v7h22v-7" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                <p class="drop-title" id="drop-title">Drop your images here</p>
+                <p class="small" id="file-help">JPEG, PNG or WebP · 25 MB per image</p>
+                <label class="file-picker"><span id="picker-label">Choose images</span><input id="files" type="file" multiple accept="image/jpeg,image/png,image/webp" /></label>
+              </div>
+              <div id="selected-files" hidden>
+                <div class="file-list-head"><h2>Selected files <span id="file-count"></span></h2><button id="clear" class="text-button" type="button" disabled>Clear all</button></div>
+                <ol id="file-list" aria-label="Selected files in processing order"></ol>
+              </div>
             </div>
-            <p class="small">JPEG uses a white background for transparency. PNG is lossless and ignores the quality setting. Converted files may be larger than the originals.</p>
-          </fieldset>
-          <fieldset id="pdf-options" hidden>
-            <legend>PDF layout</legend>
-            <label>Page size<select id="page-size"><option value="a4">A4, fit each image</option><option value="letter">US Letter, fit each image</option></select></label>
-            <p class="small">One image per page, in the order above. Use Move up / Move down to reorder. Pages rotate to fit landscape images. Images are re-encoded as JPEG at 92% quality, with a maximum 2400-pixel edge and a white background. Text stays an image, not searchable text.</p>
-          </fieldset>
-          <p id="zip-note" class="small" hidden>File names are made portable, and duplicates receive a numbered suffix. ZIP creation preserves file contents, including metadata. It does not scan for malware.</p>
-          <div class="run-bar"><button id="run" class="primary" type="submit" disabled>Convert images</button><button id="cancel" type="button" hidden>Cancel</button><span id="status" role="status" aria-live="polite">Choose files to begin.</span></div>
+            <aside class="settings-pane" aria-label="Output settings">
+              <fieldset id="image-options">
+                <legend>Output settings</legend>
+                <div class="options-grid">
+                  <label>Format<select id="format"><option value="image/jpeg">JPEG</option><option value="image/png">PNG</option><option value="image/webp">WebP</option></select></label>
+                  <label><span class="label-row">Quality <span id="quality-value">85%</span></span><input id="quality" type="range" min="10" max="100" step="5" value="85" /></label>
+                  <label>Longest edge<span class="input-with-unit"><input id="max-edge" type="number" min="1" max="12000" step="1" placeholder="Original size" aria-describedby="resize-help" /><span aria-hidden="true">px</span></span><span id="resize-help" class="small">Pixels. Smaller images stay the same size.</span></label>
+                </div>
+                <p id="format-note" class="setting-note">Transparent areas become white in JPEG.</p>
+              </fieldset>
+              <fieldset id="pdf-options" hidden>
+                <legend>PDF layout</legend>
+                <label>Page size<select id="page-size"><option value="a4">A4</option><option value="letter">US Letter</option></select></label>
+                <dl class="setting-facts"><div><dt>Layout</dt><dd>One image per page</dd></div><div><dt>Orientation</dt><dd>Fits each image</dd></div></dl>
+                <p class="setting-note">Use the arrows beside each file to set the page order.</p>
+                <details class="output-details"><summary>Image quality</summary><p>Images are saved as JPEG at 92% quality, up to a 2400-pixel edge, with a white background. Text stays an image, not searchable text.</p></details>
+              </fieldset>
+              <div id="zip-note" hidden>
+                <h2 class="settings-title">ZIP settings</h2>
+                <dl class="setting-facts"><div><dt>File contents</dt><dd>Unchanged</dd></div><div><dt>Duplicate names</dt><dd>Numbered automatically</dd></div><div><dt>Folder structure</dt><dd>One flat archive</dd></div></dl>
+                <p class="setting-note">Names are made portable. Metadata inside files is kept. Files are not scanned for malware.</p>
+              </div>
+            </aside>
+          </div>
+          <div class="run-bar"><span id="status" role="status" aria-live="polite">Choose files to begin.</span><div class="run-actions"><button id="cancel" type="button" hidden>Cancel</button><button id="run" class="primary" type="submit" disabled>Convert images</button></div></div>
           <progress id="progress" max="1" value="0" hidden aria-label="Processing progress"></progress>
           <p id="error" role="alert" tabindex="-1" hidden></p>
         </section>
       </form>
       <section id="results-panel" class="work-panel results" aria-labelledby="results-title" hidden>
-        <div class="panel-head"><h2 id="results-title" tabindex="-1">Ready to save</h2><p>Original files have not been changed. Save the results before closing this tab.</p></div>
+        <div class="panel-head"><h2 id="results-title" tabindex="-1">Ready to download</h2><p>Save your results before closing this tab. Your originals are unchanged.</p></div>
         <ul id="results"></ul>
       </section>
+      <div class="workspace-footnote"><span>Files stay on your device. No account needed.</span><span>Unpublished preview</span></div>
       <details class="privacy"><summary>Privacy, limits and preview status</summary><p>The selected files are processed in memory on this device. This preview has no upload endpoint, account system, analytics, external fonts or CDN scripts. Loading the app still makes ordinary requests to its host. No offline caching is included yet.</p><p>Image conversion redraws the picture and does not copy original EXIF, GPS, IPTC or XMP metadata. This is not a guarantee of anonymity: visible information stays in the picture, and encoders can add their own technical metadata. Animated images, SVG, HEIC and RAW formats are not supported.</p><p>Limits: 100 files, 100 MB total input, 25 MB per image, 24 megapixels per image, and 100 MB of generated outputs. Your browser may run out of memory below these limits. Cancel stops the processing worker; closing or reloading clears the selection and outputs.</p><p>This is an unpublished browser preview, not the desktop installer. Video conversion and ZIP extraction are not included. It has not completed cross-browser release testing.</p></details>
     </main>
-    <footer><div class="shell"><span>Spotless Tools</span><a href="https://github.com/Spotless-ai" target="_blank" rel="noopener noreferrer">GitHub</a></div></footer>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

@@ -4,7 +4,8 @@ import { formatSize, validateImageOptions, validateSelection, type Operation, ty
 const element = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const form = element<HTMLFormElement>("tool-form");
 const picker = element<HTMLInputElement>("files");
-const operation = element<HTMLSelectElement>("operation");
+const toolButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-operation]"));
+let operation: Operation = "images";
 const format = element<HTMLSelectElement>("format");
 const quality = element<HTMLInputElement>("quality");
 const run = element<HTMLButtonElement>("run");
@@ -30,15 +31,20 @@ function updateQuality() {
   const lossless = format.value === "image/png";
   quality.disabled = Boolean(worker) || lossless;
   element("quality-value").textContent = lossless ? "Lossless" : `${quality.value}%`;
-  element<HTMLFieldSetElement>("image-options").disabled = Boolean(worker) || operation.value !== "images";
-  element<HTMLFieldSetElement>("pdf-options").disabled = Boolean(worker) || operation.value !== "pdf";
+  element<HTMLFieldSetElement>("image-options").disabled = Boolean(worker) || operation !== "images";
+  element<HTMLFieldSetElement>("pdf-options").disabled = Boolean(worker) || operation !== "pdf";
+  element("format-note").textContent = { "image/jpeg": "Transparent areas become white in JPEG.", "image/png": "Lossless output. The file may be larger than the original.", "image/webp": "Supports transparency. Check that your destination accepts WebP." }[format.value as Task["image"]["format"]];
 }
 function renderFiles() {
   const list = element<HTMLOListElement>("file-list");
   list.replaceChildren();
   files.forEach((file, index) => {
     const row = document.createElement("li");
+    const badge = document.createElement("span");
+    badge.className = "file-badge"; badge.setAttribute("aria-hidden", "true");
+    badge.textContent = file.name.includes(".") ? file.name.split(".").pop()!.slice(0, 4) : "File";
     const info = document.createElement("div");
+    info.className = "file-info";
     const name = document.createElement("strong");
     name.textContent = file.name;
     const size = document.createElement("span");
@@ -49,20 +55,26 @@ function renderFiles() {
     actions.className = "row-actions";
     const button = (label: string, title: string, disabled: boolean, click: () => void) => {
       const control = document.createElement("button");
-      control.type = "button"; control.textContent = label; control.setAttribute("aria-label", `${title}: ${file.name}`); control.disabled = Boolean(worker) || disabled;
+      control.type = "button"; control.textContent = label; control.title = title; control.setAttribute("aria-label", `${title}: ${file.name}`); control.disabled = Boolean(worker) || disabled;
       control.addEventListener("click", click); actions.append(control);
     };
-    if (operation.value === "pdf") {
-      button("Move up", "Move up", index === 0, () => { [files[index - 1], files[index]] = [files[index], files[index - 1]]; renderFiles(); focusRow(index - 1); });
-      button("Move down", "Move down", index === files.length - 1, () => { [files[index + 1], files[index]] = [files[index], files[index + 1]]; renderFiles(); focusRow(index + 1); });
+    if (operation === "pdf") {
+      button("↑", "Move up", index === 0, () => { [files[index - 1], files[index]] = [files[index], files[index - 1]]; renderFiles(); focusRow(index - 1); });
+      button("↓", "Move down", index === files.length - 1, () => { [files[index + 1], files[index]] = [files[index], files[index + 1]]; renderFiles(); focusRow(index + 1); });
     }
-    button("Remove", "Remove file", false, () => { files.splice(index, 1); renderFiles(); focusRow(Math.min(index, files.length - 1)); });
-    row.append(info, actions); list.append(row);
+    button("×", "Remove file", false, () => { files.splice(index, 1); clearError(); renderFiles(); updateSelectionStatus(); focusRow(Math.min(index, files.length - 1)); });
+    row.append(badge, info, actions); list.append(row);
   });
-  element("empty-list").hidden = files.length > 0;
-  element("file-count").textContent = `(${files.length} · ${formatSize(files.reduce((sum, file) => sum + file.size, 0))})`;
+  element("selected-files").hidden = files.length === 0;
+  element("drop-area").classList.toggle("has-files", files.length > 0);
+  element("drop-title").textContent = files.length ? "Drop more files here" : operation === "zip" ? "Drop your files here" : "Drop your images here";
+  element("picker-label").textContent = files.length ? "Add files" : operation === "zip" ? "Choose files" : "Choose images";
+  element("file-count").textContent = `${files.length} · ${formatSize(files.reduce((sum, file) => sum + file.size, 0))}`;
   run.disabled = Boolean(worker) || files.length === 0;
   clear.disabled = Boolean(worker) || files.length === 0;
+}
+function updateSelectionStatus() {
+  status.textContent = files.length ? `${files.length} file${files.length === 1 ? "" : "s"} selected.` : "Choose files to begin.";
 }
 function focusRow(index: number) {
   const row = element("file-list").children[index];
@@ -85,10 +97,10 @@ function stopWorker() {
 function addFiles(incoming: File[]) {
   if (worker) return;
   const combined = [...files, ...incoming];
-  try { validateSelection(combined, operation.value as Operation); }
+  try { validateSelection(combined, operation); }
   catch (problem) { showError((problem as Error).message); return; }
   files = combined; clearError(); renderFiles();
-  status.textContent = `${files.length} file${files.length === 1 ? "" : "s"} selected.`;
+  updateSelectionStatus();
 }
 picker.addEventListener("change", () => { addFiles(Array.from(picker.files ?? [])); picker.value = ""; });
 clear.addEventListener("click", () => { files = []; revokeResults(); clearError(); renderFiles(); status.textContent = "Choose files to begin."; picker.focus(); });
@@ -102,17 +114,20 @@ drop.addEventListener("drop", event => {
   event.preventDefault(); drop.classList.remove("dragging");
   if (event.dataTransfer) addFiles(Array.from(event.dataTransfer.files));
 });
-operation.addEventListener("change", () => {
+for (const toolButton of toolButtons) toolButton.addEventListener("click", () => {
+  if (worker) return;
   const labels = { images: "Convert images", zip: "Create ZIP", pdf: "Images to PDF" };
-  const mode = operation.value as Operation;
-  element("tool-title").textContent = labels[mode]; run.textContent = labels[mode];
-  element("tool-description").textContent = { images: "Save JPEG, PNG or WebP images in a different format or size.", zip: "Combine files into one ZIP for sharing. Files stay on this device.", pdf: "Put still images into one PDF, in the order you choose." }[mode];
+  const mode = toolButton.dataset.operation as Operation;
+  operation = mode;
+  for (const button of toolButtons) button.setAttribute("aria-pressed", String(button === toolButton));
+  element("tool-title").textContent = labels[mode]; run.textContent = mode === "pdf" ? "Create PDF" : labels[mode];
+  element("tool-description").textContent = { images: "Change the format. Keep the original.", zip: "Bring your files together in one download.", pdf: "Your images, in order, in a single document." }[mode];
   element("image-options").hidden = mode !== "images";
   element("pdf-options").hidden = mode !== "pdf";
   element("zip-note").hidden = mode !== "zip";
   picker.accept = mode === "zip" ? "" : "image/jpeg,image/png,image/webp";
-  element("file-help").textContent = mode === "zip" ? "Up to 100 files · 100 MB total · file contents are not changed" : "JPEG, PNG or WebP · up to 25 MB per image · 100 MB total";
-  clearError(); updateQuality(); renderFiles();
+  element("file-help").textContent = mode === "zip" ? "Any file type · up to 100 files · 100 MB total" : "JPEG, PNG or WebP · 25 MB per image";
+  clearError(); updateQuality(); renderFiles(); updateSelectionStatus();
 });
 format.addEventListener("change", updateQuality);
 quality.addEventListener("input", updateQuality);
@@ -123,7 +138,7 @@ form.addEventListener("submit", event => {
   if (worker) return;
   clearError();
   const maxEdge = element<HTMLInputElement>("max-edge").value;
-  const task: Task = { operation: operation.value as Operation, files: [...files], image: { format: format.value as Task["image"]["format"], quality: Number(quality.value) / 100, maxEdge: maxEdge.trim() ? Number(maxEdge) : undefined }, pageSize: element<HTMLSelectElement>("page-size").value as Task["pageSize"] };
+  const task: Task = { operation, files: [...files], image: { format: format.value as Task["image"]["format"], quality: Number(quality.value) / 100, maxEdge: maxEdge.trim() ? Number(maxEdge) : undefined }, pageSize: element<HTMLSelectElement>("page-size").value as Task["pageSize"] };
   try {
     validateSelection(files, task.operation);
     if (task.operation === "images") validateImageOptions(task.image);
@@ -141,9 +156,16 @@ form.addEventListener("submit", event => {
         const url = URL.createObjectURL(new Blob([new Uint8Array(output.bytes)], { type: output.type })); urls.push(url);
         const row = document.createElement("li");
         const info = document.createElement("div");
+        info.className = "file-info";
+        if (["image/jpeg", "image/png", "image/webp"].includes(output.type)) {
+          const thumbnail = document.createElement("img");
+          thumbnail.className = "result-thumbnail"; thumbnail.src = url; thumbnail.alt = "";
+          thumbnail.width = 40; thumbnail.height = 40; thumbnail.loading = "lazy";
+          row.append(thumbnail);
+        }
         const name = document.createElement("strong"); name.textContent = output.name;
         const details = document.createElement("span"); details.className = "small"; details.textContent = `${formatSize(output.bytes.length)} · ${output.detail}`;
-        const save = document.createElement("a"); save.className = "save-button"; save.href = url; save.download = output.name; save.textContent = "Save"; save.setAttribute("aria-label", `Save ${output.name}`);
+        const save = document.createElement("a"); save.className = "save-button"; save.href = url; save.download = output.name; save.textContent = "Download"; save.setAttribute("aria-label", `Download ${output.name}`);
         info.append(name, details); row.append(info, save); element("results").append(row);
       }
       element("results-panel").hidden = false;

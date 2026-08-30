@@ -1,5 +1,5 @@
 import "./style.css";
-import { formatSize, validateImageOptions, validateSelection, type Operation, type Task, type WorkerReply } from "./policy";
+import { formatSize, targetBytesFromKB, validateImageOptions, validateSelection, type Operation, type Task, type WorkerReply } from "./policy";
 
 const element = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const form = element<HTMLFormElement>("tool-form");
@@ -8,6 +8,8 @@ const toolButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[da
 let operation: Operation = "images";
 const format = element<HTMLSelectElement>("format");
 const quality = element<HTMLInputElement>("quality");
+const targetKB = element<HTMLInputElement>("target-kb");
+const allowResize = element<HTMLInputElement>("allow-resize");
 const run = element<HTMLButtonElement>("run");
 const cancel = element<HTMLButtonElement>("cancel");
 const clear = element<HTMLButtonElement>("clear");
@@ -29,8 +31,13 @@ function revokeResults() {
 }
 function updateQuality() {
   const lossless = format.value === "image/png";
-  quality.disabled = Boolean(worker) || lossless;
-  element("quality-value").textContent = lossless ? "Lossless" : `${quality.value}%`;
+  const hasTarget = Boolean(targetKB.value.trim());
+  quality.disabled = Boolean(worker) || lossless || hasTarget;
+  element("quality-value").textContent = lossless ? "Lossless" : hasTarget ? "Automatic" : `${quality.value}%`;
+  element("target-resize").hidden = !hasTarget;
+  element("target-details").hidden = !hasTarget;
+  allowResize.disabled = Boolean(worker) || !hasTarget;
+  if (!hasTarget) allowResize.checked = false;
   element<HTMLFieldSetElement>("image-options").disabled = Boolean(worker) || operation !== "images";
   element<HTMLFieldSetElement>("pdf-options").disabled = Boolean(worker) || operation !== "pdf";
   element("format-note").textContent = { "image/jpeg": "Transparent areas become white in JPEG.", "image/png": "Lossless output. The file may be larger than the original.", "image/webp": "Supports transparency. Check that your destination accepts WebP." }[format.value as Task["image"]["format"]];
@@ -131,6 +138,7 @@ for (const toolButton of toolButtons) toolButton.addEventListener("click", () =>
 });
 format.addEventListener("change", updateQuality);
 quality.addEventListener("input", updateQuality);
+targetKB.addEventListener("input", updateQuality);
 cancel.addEventListener("click", () => { stopWorker(); status.textContent = "Cancelled. Original files were not changed."; run.focus(); });
 
 form.addEventListener("submit", event => {
@@ -138,8 +146,8 @@ form.addEventListener("submit", event => {
   if (worker) return;
   clearError();
   const maxEdge = element<HTMLInputElement>("max-edge").value;
-  const task: Task = { operation, files: [...files], image: { format: format.value as Task["image"]["format"], quality: Number(quality.value) / 100, maxEdge: maxEdge.trim() ? Number(maxEdge) : undefined }, pageSize: element<HTMLSelectElement>("page-size").value as Task["pageSize"] };
   try {
+    const task: Task = { operation, files: [...files], image: { format: format.value as Task["image"]["format"], quality: Number(quality.value) / 100, maxEdge: maxEdge.trim() ? Number(maxEdge) : undefined, targetBytes: operation === "images" ? targetBytesFromKB(targetKB.value) : undefined, allowResize: operation === "images" && allowResize.checked }, pageSize: element<HTMLSelectElement>("page-size").value as Task["pageSize"] };
     validateSelection(files, task.operation);
     if (task.operation === "images") validateImageOptions(task.image);
     revokeResults();
@@ -149,7 +157,7 @@ form.addEventListener("submit", event => {
     cancel.focus();
     worker.onerror = () => { stopWorker(); status.textContent = "Processing stopped."; showError("The processing worker stopped unexpectedly. Try a smaller batch in a current browser."); };
     worker.onmessage = ({ data }: MessageEvent<WorkerReply>) => {
-      if (data.kind === "progress") { progress.max = data.total; progress.value = data.done; status.textContent = `Processing: ${data.done} of ${data.total} steps…`; return; }
+      if (data.kind === "progress") { progress.max = data.total; progress.value = data.done; status.textContent = data.message ?? `Processing: ${data.done} of ${data.total} steps…`; return; }
       stopWorker();
       if (data.kind === "error") { status.textContent = "No results were generated."; showError(data.message); return; }
       for (const output of data.outputs) {

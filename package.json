@@ -1,6 +1,6 @@
 {
   "name": "dropzone-web",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Local image conversion, ZIP creation and images to PDF in your browser.",
   "type": "module",

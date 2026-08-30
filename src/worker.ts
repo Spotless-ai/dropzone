@@ -1,7 +1,7 @@
 import { createArchive } from "./archive";
 import { convertImage } from "./convert";
 import { createImagePdf, type PdfImage } from "./pdf";
-import { formatSize, imageOutputName, LIMITS, uniqueName, validateSelection, type Output, type Task, type WorkerReply } from "./policy";
+import { formatSize, imageOutputName, LIMITS, uniqueName, validateSelection, type ImageOptions, type Output, type Task, type WorkerReply } from "./policy";
 
 const scope = self as unknown as { onmessage: (event: MessageEvent<Task>) => void; postMessage: (message: WorkerReply, transfer?: Transferable[]) => void };
 scope.onmessage = async ({ data: task }) => {
@@ -25,12 +25,16 @@ scope.onmessage = async ({ data: task }) => {
       let generatedBytes = 0;
       for (const [index, file] of task.files.entries()) {
         try {
-          const options = task.operation === "pdf" ? { format: "image/jpeg" as const, quality: 0.92, maxEdge: 2400 } : task.image;
-          const result = await convertImage(file, options);
+          const options: ImageOptions = task.operation === "pdf" ? { format: "image/jpeg", quality: 0.92, maxEdge: 2400 } : task.image;
+          const result = await convertImage(file, options, options.targetBytes === undefined ? undefined : attempt => scope.postMessage({ kind: "progress", done: index, total: task.files.length, message: `Fitting image ${index + 1} of ${task.files.length} · attempt ${attempt}…` }));
+          if (options.targetBytes !== undefined && result.bytes.length > options.targetBytes) throw new Error("The result exceeded the target size. No over-limit file was returned.");
           generatedBytes += result.bytes.length;
           if (generatedBytes > LIMITS.outputBytes) throw new Error("The results exceed the 100 MB output limit. Try fewer files or a smaller image size.");
           if (task.operation === "pdf") pdfImages.push({ bytes: result.bytes, type: "image/jpeg" });
-          else outputs.push({ name: uniqueName(imageOutputName(file.name, options.format), used), bytes: result.bytes, type: options.format, detail: `${result.width} × ${result.height} · original ${formatSize(file.size)}` });
+          else {
+            const targetDetail = options.targetBytes === undefined ? "" : ` · ${result.bytes.length.toLocaleString("en-US")} / ${options.targetBytes.toLocaleString("en-US")} bytes maximum${result.quality === undefined ? "" : ` · quality ${Math.round(result.quality * 100)}%`}${result.resizedToFit ? " · resized to fit" : ""}`;
+            outputs.push({ name: uniqueName(imageOutputName(file.name, options.format), used), bytes: result.bytes, type: options.format, detail: `${result.width} × ${result.height} · original ${formatSize(file.size)}${targetDetail}` });
+          }
           progress(index + 1, task.operation === "pdf" ? task.files.length * 2 + 1 : task.files.length);
         } catch (error) { throw new Error(`${file.name}: ${error instanceof Error ? error.message : "Unable to process this image."}`); }
       }

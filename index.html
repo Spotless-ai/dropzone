@@ -45,9 +45,14 @@
                 <div class="options-grid">
                   <label>Format<select id="format"><option value="image/jpeg">JPEG</option><option value="image/png">PNG</option><option value="image/webp">WebP</option></select></label>
                   <label><span class="label-row">Quality <span id="quality-value">85%</span></span><input id="quality" type="range" min="10" max="100" step="5" value="85" /></label>
-                  <label>Longest edge<span class="input-with-unit"><input id="max-edge" type="number" min="1" max="12000" step="1" placeholder="Original size" aria-describedby="resize-help" /><span aria-hidden="true">px</span></span><span id="resize-help" class="small">Pixels. Smaller images stay the same size.</span></label>
+                  <div class="target-options full-width-option">
+                    <label>Target size<span class="input-with-unit"><input id="target-kb" type="number" min="1" max="100000" step="1" placeholder="No limit" aria-describedby="target-help" /><span aria-hidden="true">KB</span></span><span id="target-help" class="small">Maximum per image. 1 KB = 1,000 bytes.</span></label>
+                    <div id="target-resize" hidden><label class="checkbox-option"><input id="allow-resize" type="checkbox" aria-describedby="target-resize-help" />Allow smaller dimensions</label><span id="target-resize-help" class="small">If needed, down to a 256px longest edge.</span></div>
+                  </div>
+                  <label class="full-width-option">Longest edge<span class="input-with-unit"><input id="max-edge" type="number" min="1" max="12000" step="1" placeholder="Original size" aria-describedby="resize-help" /><span aria-hidden="true">px</span></span><span id="resize-help" class="small">Pixels. Smaller images stay the same size.</span></label>
                 </div>
                 <p id="format-note" class="setting-note">Transparent areas become white in JPEG.</p>
+                <details id="target-details" class="output-details" hidden><summary>How target size works</summary><p>JPEG and WebP use automatic quality between 40% and 95%. PNG stays lossless. Dimensions only shrink if you allow it or set a longest edge. If the limit cannot be met, no over-limit file is returned. The target is a maximum, not an exact size.</p></details>
               </fieldset>
               <fieldset id="pdf-options" hidden>
                 <legend>PDF layout</legend>
@@ -72,7 +77,7 @@
         <div class="panel-head"><h2 id="results-title" tabindex="-1">Ready to download</h2><p>Save your results before closing this tab. Your originals are unchanged.</p></div>
         <ul id="results"></ul>
       </section>
-      <div class="workspace-footnote"><span>Files stay on your device. No account needed.</span><a href="https://github.com/Spotless-ai/dropzone" target="_blank" rel="noopener noreferrer">Open source · v0.1</a></div>
+      <div class="workspace-footnote"><span>Files stay on your device. No account needed.</span><a href="https://github.com/Spotless-ai/dropzone" target="_blank" rel="noopener noreferrer">Open source · v0.2</a></div>
       <details class="privacy"><summary>Privacy and supported files</summary><p>The selected files are processed in memory on this device. There is no upload endpoint, account system, analytics, external font or CDN script. Loading the app still makes ordinary requests to GitHub Pages. No offline caching is included.</p><p>Image conversion redraws the picture and does not copy original EXIF, GPS, IPTC or XMP metadata. This is not a guarantee of anonymity: visible information stays in the picture, and encoders can add their own technical metadata. Animated images, SVG, GIF, HEIC and RAW formats are not supported.</p><p>Limits: 100 files, 100 MB total input, 25 MB per image, 24 megapixels per image, and 100 MB of generated outputs. Your browser may run out of memory below these limits. Cancel stops the processing worker; closing or reloading clears the selection and outputs.</p><p>This is the browser edition. Video conversion, ZIP extraction and PDF editing are not included. Image tools require a browser with worker, OffscreenCanvas and createImageBitmap support. Browser compatibility testing is ongoing; if a format cannot be encoded, the app reports an error instead of silently substituting another format.</p><p><a href="https://github.com/Spotless-ai/dropzone/issues" target="_blank" rel="noopener noreferrer">Report a problem</a> · <a href="./LICENSE.txt">MIT license</a> · <a href="./third-party-licenses.txt">Third-party licenses</a></p></details>
     </main>
     <script type="module" src="/src/main.ts"></script>

@@ -3,10 +3,10 @@ export const LIMITS = { files: 100, totalBytes: 100 * MiB, imageBytes: 25 * MiB,
 export type Operation = "images" | "zip" | "pdf";
 export type ImageFormat = "image/jpeg" | "image/png" | "image/webp";
 export interface InputFile { name: string; size: number }
-export interface ImageOptions { format: ImageFormat; quality: number; maxEdge?: number }
+export interface ImageOptions { format: ImageFormat; quality: number; maxEdge?: number; targetBytes?: number; allowResize?: boolean }
 export interface Task { operation: Operation; files: File[]; image: ImageOptions; pageSize: "a4" | "letter" }
 export interface Output { name: string; bytes: Uint8Array; type: string; detail: string }
-export type WorkerReply = { kind: "progress"; done: number; total: number } | { kind: "success"; outputs: Output[] } | { kind: "error"; message: string };
+export type WorkerReply = { kind: "progress"; done: number; total: number; message?: string } | { kind: "success"; outputs: Output[] } | { kind: "error"; message: string };
 
 export function validateSelection(files: InputFile[], operation: Operation): void {
   if (!files.length) throw new Error("Choose at least one file.");
@@ -24,6 +24,15 @@ export function validateImageOptions(options: ImageOptions): void {
   if (!["image/jpeg", "image/png", "image/webp"].includes(options.format)) throw new Error("Choose JPEG, PNG or WebP output.");
   if (!Number.isFinite(options.quality) || options.quality < 0.1 || options.quality > 1) throw new Error("Quality must be between 10% and 100%.");
   if (options.maxEdge !== undefined && (!Number.isInteger(options.maxEdge) || options.maxEdge < 1 || options.maxEdge > LIMITS.edge)) throw new Error("Longest edge must be a whole number from 1 to 12000 pixels.");
+  if (options.targetBytes !== undefined && (!Number.isSafeInteger(options.targetBytes) || options.targetBytes < 1_000 || options.targetBytes > 100_000_000)) throw new Error("Target size must be between 1 and 100,000 KB (1 KB = 1,000 bytes).");
+  if (options.allowResize !== undefined && typeof options.allowResize !== "boolean") throw new Error("Choose whether smaller dimensions are allowed.");
+}
+
+export function targetBytesFromKB(value: string): number | undefined {
+  if (!value.trim()) return undefined;
+  const kb = Number(value);
+  if (!Number.isInteger(kb) || kb < 1 || kb > 100_000) throw new Error("Target size must be a whole number from 1 to 100,000 KB.");
+  return kb * 1_000;
 }
 
 export function checkDimensions(width: number, height: number): void {

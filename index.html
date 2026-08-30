@@ -4,7 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Convert images, create ZIP files and turn images into a PDF. Files are processed on your device." />
-    <meta name="robots" content="noindex, nofollow" />
+    <link rel="canonical" href="https://spotless-ai.github.io/dropzone/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="DropZone — local file tools" />
+    <meta property="og:description" content="Convert images, create ZIP files and turn images into a PDF. Free, open source, and processed on your device." />
+    <meta property="og:url" content="https://spotless-ai.github.io/dropzone/" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="DropZone — local file tools" />
+    <meta name="twitter:description" content="Convert images, create ZIP files and turn images into a PDF. Free and open source." />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'" />
     <title>DropZone — local file tools</title>
   </head>
@@ -65,8 +72,8 @@
         <div class="panel-head"><h2 id="results-title" tabindex="-1">Ready to download</h2><p>Save your results before closing this tab. Your originals are unchanged.</p></div>
         <ul id="results"></ul>
       </section>
-      <div class="workspace-footnote"><span>Files stay on your device. No account needed.</span><span>Unpublished preview</span></div>
-      <details class="privacy"><summary>Privacy, limits and preview status</summary><p>The selected files are processed in memory on this device. This preview has no upload endpoint, account system, analytics, external fonts or CDN scripts. Loading the app still makes ordinary requests to its host. No offline caching is included yet.</p><p>Image conversion redraws the picture and does not copy original EXIF, GPS, IPTC or XMP metadata. This is not a guarantee of anonymity: visible information stays in the picture, and encoders can add their own technical metadata. Animated images, SVG, HEIC and RAW formats are not supported.</p><p>Limits: 100 files, 100 MB total input, 25 MB per image, 24 megapixels per image, and 100 MB of generated outputs. Your browser may run out of memory below these limits. Cancel stops the processing worker; closing or reloading clears the selection and outputs.</p><p>This is an unpublished browser preview, not the desktop installer. Video conversion and ZIP extraction are not included. It has not completed cross-browser release testing.</p></details>
+      <div class="workspace-footnote"><span>Files stay on your device. No account needed.</span><a href="https://github.com/Spotless-ai/dropzone" target="_blank" rel="noopener noreferrer">Open source · v0.1</a></div>
+      <details class="privacy"><summary>Privacy and supported files</summary><p>The selected files are processed in memory on this device. There is no upload endpoint, account system, analytics, external font or CDN script. Loading the app still makes ordinary requests to GitHub Pages. No offline caching is included.</p><p>Image conversion redraws the picture and does not copy original EXIF, GPS, IPTC or XMP metadata. This is not a guarantee of anonymity: visible information stays in the picture, and encoders can add their own technical metadata. Animated images, SVG, GIF, HEIC and RAW formats are not supported.</p><p>Limits: 100 files, 100 MB total input, 25 MB per image, 24 megapixels per image, and 100 MB of generated outputs. Your browser may run out of memory below these limits. Cancel stops the processing worker; closing or reloading clears the selection and outputs.</p><p>This is the browser edition. Video conversion, ZIP extraction and PDF editing are not included. Image tools require a browser with worker, OffscreenCanvas and createImageBitmap support. Browser compatibility testing is ongoing; if a format cannot be encoded, the app reports an error instead of silently substituting another format.</p><p><a href="https://github.com/Spotless-ai/dropzone/issues" target="_blank" rel="noopener noreferrer">Report a problem</a> · <a href="./LICENSE.txt">MIT license</a> · <a href="./third-party-licenses.txt">Third-party licenses</a></p></details>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>

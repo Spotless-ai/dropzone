@@ -18,7 +18,7 @@ scope.onmessage = async ({ data: task }) => {
       }
       const result = createArchive(inputs);
       const renamed = result.names.filter((name, index) => name !== task.files[index].name).length;
-      outputs.push({ name: "dropzone-files.zip", bytes: result.bytes, type: "application/zip", detail: `${inputs.length} files${renamed ? ` · ${renamed} names adjusted for compatibility` : ""}` });
+      outputs.push({ name: "dropzone-files.zip", bytes: result.bytes, type: "application/zip", detail: `${inputs.length} file${inputs.length === 1 ? "" : "s"}${renamed ? ` · ${renamed} name${renamed === 1 ? "" : "s"} adjusted for compatibility` : ""}` });
     } else {
       const used = new Set<string>();
       const pdfImages: PdfImage[] = [];

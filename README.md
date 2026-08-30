@@ -1,6 +1,6 @@
 # DropZone Web
 
-Local image conversion, ZIP creation and images to PDF, without an installer.
+Local image conversion, metadata removal, ZIP creation and images to PDF, without an installer.
 
 [Open DropZone](https://spotless-ai.github.io/dropzone/) · [Report a problem](https://github.com/Spotless-ai/dropzone/issues)
 
@@ -11,6 +11,7 @@ Free and open source. Choose a tool, add your files, adjust the output settings,
 - Convert still JPEG, PNG and WebP images to JPEG, PNG or WebP; optionally reduce the longest edge. Images are never enlarged.
 - Choose JPEG/WebP quality. PNG encoding is lossless; a smaller file is not guaranteed.
 - Set a maximum size per image in KB. Automatic quality adjustment and optional resizing help fit upload limits.
+- Remove descriptive metadata from still JPEG, PNG and WebP files without re-encoding their image data. Orientation and color information are kept for display.
 - Create a ZIP from selected files. Duplicate names get numbered suffixes instead of overwriting one another. Exported names are flattened and made portable; file contents are unchanged.
 - Put selected images into an A4 or US Letter PDF, one image per page, with explicit ordering controls. Landscape images get landscape pages.
 - Cancel processing by terminating its worker. A two-minute processing timeout prevents an indefinitely running task.
@@ -20,7 +21,7 @@ This is the browser edition, not a feature-for-feature port of the desktop app. 
 
 ## Image handling
 
-Image headers are checked before decoding to enforce size limits and reject supported animation containers. The browser decodes and redraws accepted images. Original EXIF, GPS, IPTC and XMP fields are not copied. This is not a comprehensive anonymity guarantee: visible information remains, and an encoder may write technical metadata of its own. Browser color management may change color profiles or pixel values.
+For conversion, image headers are checked before decoding to enforce size limits and reject supported animation containers. The browser decodes and redraws accepted images. Original EXIF, GPS, IPTC and XMP fields are not copied. This is not a comprehensive anonymity guarantee: visible information remains, and an encoder may write technical metadata of its own. Browser color management may change color profiles or pixel values.
 
 JPEG outputs use a white background for transparent pixels. PDF images are re-encoded to JPEG at 92% quality with a maximum 2400-pixel edge and a white background. PDF creation therefore is not lossless; it is intended for convenient image documents, not archival scans.
 
@@ -48,6 +49,37 @@ The limit applies to each image separately, not to the batch, ZIP or PDF.
   than an already-small original.
 - If the limit cannot be met, increase it or allow resizing. No oversized
   download or partial batch is presented as a success. Originals stay unchanged.
+
+### Remove metadata without recompression
+
+Choose **Remove metadata**, add still JPEG, PNG or WebP images, and download
+the `-clean` copies. This mode edits the file container, not the encoded picture:
+it never calls an image encoder, changes format, resizes or modifies originals.
+Target-size and quality settings from the Images tab do not apply.
+
+- Removes EXIF camera/GPS tags, IPTC, XMP, comments, embedded EXIF/JFIF
+  thumbnails, PNG text/time chunks, unknown ancillary metadata and JPEG/PNG
+  trailing data. WebP unknown chunks and XMP are removed as well.
+- Replaces EXIF with an orientation-only block when a rotation or reflection
+  is needed. Keeps ICC profiles and recognized color/display information,
+  including PNG transparency/HDR color chunks and JPEG color-transform markers.
+  The encoded JPEG scans, PNG image chunks and WebP image/alpha payloads remain
+  unchanged. Applications can still differ in how they display an image.
+- Color profiles may contain descriptive fields; they are intentionally kept.
+  Filenames, visible information and hidden data within pixels are not removed.
+  This is **not an anonymity guarantee**, malware scanner or forensic scrubber.
+- Copyright tags and embedded provenance/content credentials may be removed.
+  Keep the original when those records matter.
+- Only supported still-image structures are accepted. Animation, multi-picture
+  and recognized HDR gain-map JPEG containers are rejected. Damaged metadata,
+  invalid PNG checksums, incomplete containers and unsupported structures stop
+  the batch; this parser does not fully validate compressed image bitstreams.
+- Already-clean files are labeled **No metadata changes needed**. Size savings
+  depend on the original metadata; this is not an image compression mode.
+
+Implementation references: [PNG specification](https://www.w3.org/TR/png-3/),
+[WebP container specification](https://developers.google.com/speed/webp/docs/riff_container),
+and [JFIF structure](https://www.w3.org/Graphics/JPEG/jfif3.pdf).
 
 ## Privacy and limits
 
@@ -79,7 +111,7 @@ The build produces static files in `dist/`, with relative asset paths for GitHub
 
 ## Compatibility and verification
 
-Image tools require `OffscreenCanvas`, `createImageBitmap` and workers. Unsupported encoding produces a visible error; it does not silently return a different format.
+Image conversion and PDF creation require `OffscreenCanvas`, `createImageBitmap` and workers. Metadata removal needs a worker but no image encoder or canvas API. Unsupported encoding produces a visible error; it does not silently return a different format.
 
 The first release was tested in the Codex in-app browser on Windows. Saved JPEG, PNG, WebP, ZIP and PDF outputs were independently reopened. The checks covered transparency, an EXIF orientation fixture, metadata omission, duplicate ZIP names, PDF page orientation, error recovery and cancellation. Responsive checks covered 320px, 390px and desktop widths. See [release verification](docs/release-0.1.0.md).
 
@@ -89,6 +121,12 @@ codecs through a Node canvas adapter. That additional check is not browser/UI
 testing. See [0.2.0 verification](docs/release-0.2.0.md) for scope and commands.
 
 This is an early release, not a claim of universal browser compatibility. Standalone Chrome, Edge, Firefox and Safari testing, full keyboard/screen-reader testing, exhaustive color-profile/metadata checks and maximum-sized batches remain follow-up work. Original files are never overwritten. Keep your originals and check the result before sharing it.
+
+Metadata removal has byte-preservation, malformed-container, orientation,
+metadata omission and worker-protocol tests. A separate native-codec check
+reopens cleaned JPEG/PNG/WebP outputs and compares decoded pixels at all eight
+EXIF orientations. See [0.3.0 verification](docs/release-0.3.0.md); these are not
+new browser/UI compatibility checks.
 
 ## Feedback
 

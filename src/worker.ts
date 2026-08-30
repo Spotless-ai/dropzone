@@ -1,12 +1,13 @@
 import { createArchive } from "./archive";
 import { convertImage } from "./convert";
+import { stripImageMetadata } from "./metadata";
 import { createImagePdf, type PdfImage } from "./pdf";
 import { formatSize, imageOutputName, LIMITS, uniqueName, validateSelection, type ImageOptions, type Output, type Task, type WorkerReply } from "./policy";
 
 const scope = self as unknown as { onmessage: (event: MessageEvent<Task>) => void; postMessage: (message: WorkerReply, transfer?: Transferable[]) => void };
 scope.onmessage = async ({ data: task }) => {
   try {
-    if (!["images", "zip", "pdf"].includes(task.operation)) throw new Error("Choose a supported tool.");
+    if (!["images", "metadata", "zip", "pdf"].includes(task.operation)) throw new Error("Choose a supported tool.");
     validateSelection(task.files, task.operation);
     const progress = (done: number, total = task.files.length) => scope.postMessage({ kind: "progress", done, total });
     const outputs: Output[] = [];
@@ -25,6 +26,16 @@ scope.onmessage = async ({ data: task }) => {
       let generatedBytes = 0;
       for (const [index, file] of task.files.entries()) {
         try {
+          if (task.operation === "metadata") {
+            const result = stripImageMetadata(new Uint8Array(await file.arrayBuffer()));
+            generatedBytes += result.bytes.length;
+            if (generatedBytes > LIMITS.outputBytes) throw new Error("The results exceed the 100 MB output limit. Try fewer files.");
+            const kept = [result.orientationKept ? "orientation" : "", result.colorProfileKept ? "color profile" : ""].filter(Boolean);
+            const cleanName = imageOutputName(file.name, result.format).replace(/(\.[^.]+)$/, "-clean$1");
+            outputs.push({ name: uniqueName(cleanName, used), type: result.format, bytes: result.bytes, detail: `${result.changed ? "Metadata cleaned" : "No metadata changes needed"} · no re-encoding${kept.length ? ` · ${kept.join(" and ")} kept` : ""} · original ${formatSize(file.size)}` });
+            progress(index + 1);
+            continue;
+          }
           const options: ImageOptions = task.operation === "pdf" ? { format: "image/jpeg", quality: 0.92, maxEdge: 2400 } : task.image;
           const result = await convertImage(file, options, options.targetBytes === undefined ? undefined : attempt => scope.postMessage({ kind: "progress", done: index, total: task.files.length, message: `Fitting image ${index + 1} of ${task.files.length} · attempt ${attempt}…` }));
           if (options.targetBytes !== undefined && result.bytes.length > options.targetBytes) throw new Error("The result exceeded the target size. No over-limit file was returned.");

@@ -123,15 +123,16 @@ drop.addEventListener("drop", event => {
 });
 for (const toolButton of toolButtons) toolButton.addEventListener("click", () => {
   if (worker) return;
-  const labels = { images: "Convert images", zip: "Create ZIP", pdf: "Images to PDF" };
+  const labels = { images: "Convert images", metadata: "Remove metadata", zip: "Create ZIP", pdf: "Images to PDF" };
   const mode = toolButton.dataset.operation as Operation;
   operation = mode;
   for (const button of toolButtons) button.setAttribute("aria-pressed", String(button === toolButton));
   element("tool-title").textContent = labels[mode]; run.textContent = mode === "pdf" ? "Create PDF" : labels[mode];
-  element("tool-description").textContent = { images: "Change the format. Keep the original.", zip: "Bring your files together in one download.", pdf: "Your images, in order, in a single document." }[mode];
+  element("tool-description").textContent = { images: "Change the format. Keep the original.", metadata: "Remove personal tags. No recompression.", zip: "Bring your files together in one download.", pdf: "Your images, in order, in a single document." }[mode];
   element("image-options").hidden = mode !== "images";
   element("pdf-options").hidden = mode !== "pdf";
   element("zip-note").hidden = mode !== "zip";
+  element("metadata-note").hidden = mode !== "metadata";
   picker.accept = mode === "zip" ? "" : "image/jpeg,image/png,image/webp";
   element("file-help").textContent = mode === "zip" ? "Any file type · up to 100 files · 100 MB total" : "JPEG, PNG or WebP · 25 MB per image";
   clearError(); updateQuality(); renderFiles(); updateSelectionStatus();

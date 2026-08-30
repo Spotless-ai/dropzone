@@ -1,6 +1,6 @@
 export const MiB = 1024 * 1024;
 export const LIMITS = { files: 100, totalBytes: 100 * MiB, imageBytes: 25 * MiB, pixels: 24_000_000, edge: 12_000, outputBytes: 100 * MiB } as const;
-export type Operation = "images" | "zip" | "pdf";
+export type Operation = "images" | "metadata" | "zip" | "pdf";
 export type ImageFormat = "image/jpeg" | "image/png" | "image/webp";
 export interface InputFile { name: string; size: number }
 export interface ImageOptions { format: ImageFormat; quality: number; maxEdge?: number; targetBytes?: number; allowResize?: boolean }

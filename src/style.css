@@ -27,7 +27,7 @@ a { color: var(--accent); }
 .maker-link:hover { color: var(--accent); }
 .maker-link span { margin-left: 4px; }
 .workspace { padding-block: 24px 40px; }
-.tool-nav { display: flex; gap: 28px; border-bottom: 1px solid var(--border); }
+.tool-nav { display: flex; flex-wrap: wrap; gap: 0 28px; border-bottom: 1px solid var(--border); }
 .tool-nav button { position: relative; border: 0; border-radius: 0; padding: 10px 0 15px; min-height: 44px; background: transparent; color: var(--muted); font-weight: 500; white-space: nowrap; }
 .tool-nav button:hover { color: #24272c; }
 .tool-nav button[aria-pressed="true"] { color: var(--accent); }
@@ -134,7 +134,7 @@ progress { display: block; width: 100%; height: 5px; accent-color: var(--accent)
 @media (max-width: 520px) {
   .shell { width: calc(100% - 32px); }
   .brand-description { display: none; }
-  .tool-nav { gap: 24px; }
+  .tool-nav { gap: 0 20px; }
   .tool-nav button { font-size: 12px; }
   .workspace-heading { margin: 22px 0 18px; }
   h1 { font-size: 23px; }

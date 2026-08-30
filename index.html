@@ -3,15 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Convert images, create ZIP files and turn images into a PDF. Files are processed on your device." />
+    <meta name="description" content="Convert and compress images, remove metadata, create ZIPs and make PDFs. Files are processed on your device." />
     <link rel="canonical" href="https://spotless-ai.github.io/dropzone/" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="DropZone — local file tools" />
-    <meta property="og:description" content="Convert images, create ZIP files and turn images into a PDF. Free, open source, and processed on your device." />
+    <meta property="og:description" content="Convert and compress images, remove metadata, create ZIPs and make PDFs. Free, open source, and processed on your device." />
     <meta property="og:url" content="https://spotless-ai.github.io/dropzone/" />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="DropZone — local file tools" />
-    <meta name="twitter:description" content="Convert images, create ZIP files and turn images into a PDF. Free and open source." />
+    <meta name="twitter:description" content="Convert and compress images, remove metadata, create ZIPs and make PDFs. Free and open source." />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'" />
     <title>DropZone — local file tools</title>
   </head>
@@ -21,6 +21,7 @@
       <form id="tool-form">
         <div class="tool-nav" role="group" aria-label="File tool">
           <button type="button" data-operation="images" aria-pressed="true">Images</button>
+          <button type="button" data-operation="metadata" aria-pressed="false">Remove metadata</button>
           <button type="button" data-operation="zip" aria-pressed="false">Create ZIP</button>
           <button type="button" data-operation="pdf" aria-pressed="false">Images to PDF</button>
         </div>
@@ -54,6 +55,12 @@
                 <p id="format-note" class="setting-note">Transparent areas become white in JPEG.</p>
                 <details id="target-details" class="output-details" hidden><summary>How target size works</summary><p>JPEG and WebP use automatic quality between 40% and 95%. PNG stays lossless. Dimensions only shrink if you allow it or set a longest edge. If the limit cannot be met, no over-limit file is returned. The target is a maximum, not an exact size.</p></details>
               </fieldset>
+              <div id="metadata-note" hidden>
+                <h2 class="settings-title">Metadata removal</h2>
+                <dl class="setting-facts"><div><dt>Image data</dt><dd>No re-encoding or resizing</dd></div><div><dt>Removed</dt><dd>GPS, camera tags, comments, embedded thumbnails and other descriptive metadata</dd></div><div><dt>Kept for display</dt><dd>Orientation and color information</dd></div></dl>
+                <p class="setting-note">Downloads a separate copy in the same format. The original stays unchanged.</p>
+                <details class="output-details"><summary>What this does not hide</summary><p>Visible details, filenames and hidden information within pixels remain. Color profiles can contain descriptive fields and are kept to avoid changing colors. Copyright tags and embedded provenance credentials may be removed. This is not an anonymity guarantee.</p><p>Still JPEG, PNG and WebP only. Animated and multi-picture/HDR gain-map JPEG files are not supported. Malformed metadata or unsupported structures stop the batch.</p></details>
+              </div>
               <fieldset id="pdf-options" hidden>
                 <legend>PDF layout</legend>
                 <label>Page size<select id="page-size"><option value="a4">A4</option><option value="letter">US Letter</option></select></label>
@@ -77,8 +84,8 @@
         <div class="panel-head"><h2 id="results-title" tabindex="-1">Ready to download</h2><p>Save your results before closing this tab. Your originals are unchanged.</p></div>
         <ul id="results"></ul>
       </section>
-      <div class="workspace-footnote"><span>Files stay on your device. No account needed.</span><a href="https://github.com/Spotless-ai/dropzone" target="_blank" rel="noopener noreferrer">Open source · v0.2</a></div>
-      <details class="privacy"><summary>Privacy and supported files</summary><p>The selected files are processed in memory on this device. There is no upload endpoint, account system, analytics, external font or CDN script. Loading the app still makes ordinary requests to GitHub Pages. No offline caching is included.</p><p>Image conversion redraws the picture and does not copy original EXIF, GPS, IPTC or XMP metadata. This is not a guarantee of anonymity: visible information stays in the picture, and encoders can add their own technical metadata. Animated images, SVG, GIF, HEIC and RAW formats are not supported.</p><p>Limits: 100 files, 100 MB total input, 25 MB per image, 24 megapixels per image, and 100 MB of generated outputs. Your browser may run out of memory below these limits. Cancel stops the processing worker; closing or reloading clears the selection and outputs.</p><p>This is the browser edition. Video conversion, ZIP extraction and PDF editing are not included. Image tools require a browser with worker, OffscreenCanvas and createImageBitmap support. Browser compatibility testing is ongoing; if a format cannot be encoded, the app reports an error instead of silently substituting another format.</p><p><a href="https://github.com/Spotless-ai/dropzone/issues" target="_blank" rel="noopener noreferrer">Report a problem</a> · <a href="./LICENSE.txt">MIT license</a> · <a href="./third-party-licenses.txt">Third-party licenses</a></p></details>
+      <div class="workspace-footnote"><span>Files stay on your device. No account needed.</span><a href="https://github.com/Spotless-ai/dropzone" target="_blank" rel="noopener noreferrer">Open source · v0.3</a></div>
+      <details class="privacy"><summary>Privacy and supported files</summary><p>The selected files are processed in memory on this device. There is no upload endpoint, account system, analytics, external font or CDN script. Loading the app still makes ordinary requests to GitHub Pages. No offline caching is included.</p><p>Image conversion redraws the picture and does not copy original EXIF, GPS, IPTC or XMP metadata. The separate Remove metadata tool does not re-encode image data; it keeps orientation and color information for display, including color profiles that may contain descriptive fields. Neither tool guarantees anonymity: visible information stays in the picture. Animated images, SVG, GIF, HEIC and RAW formats are not supported.</p><p>Limits: 100 files, 100 MB total input, 25 MB per image, 24 megapixels per image, and 100 MB of generated outputs. Your browser may run out of memory below these limits. Cancel stops the processing worker; closing or reloading clears the selection and outputs.</p><p>This is the browser edition. Video conversion, ZIP extraction and PDF editing are not included. Conversion and PDF tools require workers, OffscreenCanvas and createImageBitmap; metadata removal does not need an image encoder. Browser compatibility testing is ongoing; unsupported processing reports an error instead of silently substituting another format.</p><p><a href="https://github.com/Spotless-ai/dropzone/issues" target="_blank" rel="noopener noreferrer">Report a problem</a> · <a href="./LICENSE.txt">MIT license</a> · <a href="./third-party-licenses.txt">Third-party licenses</a></p></details>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { convertImage } from "./convert";
 import { createImagePdf } from "./pdf";
 import type { Task, WorkerReply } from "./policy";
+import { png } from "./test-fixtures";
 
 vi.mock("./convert", () => ({ convertImage: vi.fn() }));
 vi.mock("./pdf", () => ({ createImagePdf: vi.fn() }));
@@ -16,6 +17,28 @@ beforeEach(async () => {
   scope = { postMessage: reply => replies.push(reply) };
   vi.stubGlobal("self", scope);
   await import("./worker");
+});
+
+describe("metadata worker protocol", () => {
+  it("returns same-format clean copies without invoking conversion or PDF codecs", async () => {
+    const input = task(); input.operation = "metadata";
+    input.files = [new File([new Uint8Array(png())], "picture.png"), new File([new Uint8Array(png())], "picture.png")];
+    input.image.targetBytes = -1; input.image.maxEdge = 1;
+    await scope.onmessage!({ data: input });
+    expect(converted).not.toHaveBeenCalled(); expect(madePdf).not.toHaveBeenCalled();
+    expect(replies.filter(reply => reply.kind === "progress")).toHaveLength(2);
+    const success = replies.find(reply => reply.kind === "success");
+    expect(success?.outputs.map(output => output.name)).toEqual(["picture-clean.png", "picture-clean (2).png"]);
+    expect(success?.outputs[0]).toMatchObject({ type: "image/png", bytes: png(), detail: expect.stringContaining("No metadata changes needed · no re-encoding") });
+    expect(new Uint8Array(await input.files[0].arrayBuffer())).toEqual(png());
+  });
+  it("rejects a damaged file with its name and returns no partial batch", async () => {
+    const input = task(); input.operation = "metadata";
+    input.files = [new File([new Uint8Array(png())], "okay.png"),new File(["broken"],"bad.jpg")];
+    await scope.onmessage!({ data: input });
+    expect(replies.at(-1)).toMatchObject({ kind: "error", message: expect.stringContaining("bad.jpg:") });
+    expect(replies.some(reply => reply.kind === "success")).toBe(false);
+  });
 });
 afterEach(() => vi.unstubAllGlobals());
 

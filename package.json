@@ -1,0 +1,25 @@
+{
+  "name": "dropzone-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local image conversion, ZIP creation and images to PDF in your browser.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build && node scripts/check-build.mjs && node scripts/check-worker.mjs",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "vitest run",
+    "check": "npm test && npm run build"
+  },
+  "dependencies": {
+    "fflate": "0.8.3",
+    "pdf-lib": "1.17.1"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "vite": "8.2.2",
+    "vitest": "4.1.11"
+  },
+  "engines": { "node": ">=22.12.0" }
+}

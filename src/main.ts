@@ -18,7 +18,7 @@ let worker: Worker | undefined;
 let deadline: ReturnType<typeof setTimeout> | undefined;
 let urls: string[] = [];
 
-function showError(message: string) { error.textContent = message; error.hidden = false; }
+function showError(message: string) { error.textContent = message; error.hidden = false; error.focus(); }
 function clearError() { error.textContent = ""; error.hidden = true; }
 function revokeResults() {
   for (const url of urls) URL.revokeObjectURL(url);
@@ -91,7 +91,7 @@ function addFiles(incoming: File[]) {
   status.textContent = `${files.length} file${files.length === 1 ? "" : "s"} selected.`;
 }
 picker.addEventListener("change", () => { addFiles(Array.from(picker.files ?? [])); picker.value = ""; });
-clear.addEventListener("click", () => { files = []; revokeResults(); clearError(); renderFiles(); status.textContent = "Choose files to begin."; });
+clear.addEventListener("click", () => { files = []; revokeResults(); clearError(); renderFiles(); status.textContent = "Choose files to begin."; picker.focus(); });
 const drop = element("drop-area");
 // Prevent accidental navigation when a file is dropped outside the target.
 document.addEventListener("dragover", event => { if (event.dataTransfer?.types.includes("Files")) event.preventDefault(); });
@@ -131,6 +131,7 @@ form.addEventListener("submit", event => {
     worker = new Worker(new URL("./worker.ts", import.meta.url), { type: "module" });
     setBusy(true); progress.value = 0; progress.max = 1;
     status.textContent = "Processing on this device…";
+    cancel.focus();
     worker.onerror = () => { stopWorker(); status.textContent = "Processing stopped."; showError("The processing worker stopped unexpectedly. Try a smaller batch in a current browser."); };
     worker.onmessage = ({ data }: MessageEvent<WorkerReply>) => {
       if (data.kind === "progress") { progress.max = data.total; progress.value = data.done; status.textContent = `Processing: ${data.done} of ${data.total} steps…`; return; }

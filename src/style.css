@@ -1,4 +1,5 @@
 :root {
+  color-scheme: light dark;
   font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
   color: #24272c;
   background: #f6f7f9;
@@ -115,6 +116,29 @@ progress { display: block; width: 100%; height: 5px; accent-color: var(--accent)
 .privacy { margin-top: 16px; font-size: 11px; color: var(--muted); }
 .privacy summary { width: fit-content; padding: 4px 0; }
 .privacy p { font-size: 12px; max-width: 820px; }
+@media screen and (prefers-color-scheme: dark) {
+  :root { color: #e8edf3; background: #171b21; --border: #424b58; --muted: #b5bfcc; --accent: #80bfff; }
+  button, select, input[type="number"], .file-picker, .save-button { background: #222831; color: #e8edf3; border-color: #758091; }
+  input::placeholder { color: #b5bfcc; opacity: 1; }
+  button:hover, .save-button:hover, .file-picker:hover { background: #303946; }
+  .app-header, .work-panel { background: #222831; }
+  .tool-nav button { background: transparent; color: var(--muted); }
+  .tool-nav button:hover, .row-actions button:hover { color: #e8edf3; }
+  .tool-nav button[aria-pressed="true"] { color: var(--accent); }
+  .drop-area { background: #1c222a; border-color: #758091; }
+  .drop-area.dragging { background: #263d54; border-color: var(--accent); }
+  .upload-icon { color: #b5bfcc; }
+  #file-list li, #results li { border-color: var(--border); }
+  .file-badge { background: #303946; border-color: var(--border); color: var(--muted); }
+  .settings-pane { background: #1c222a; border-color: var(--border); }
+  .text-button, .row-actions button { background: transparent; border-color: transparent; color: var(--muted); }
+  .text-button:hover, .row-actions button:hover { background: #303946; }
+  .primary { background: #2468a4; border-color: #80bfff; color: #fff; }
+  .primary:hover { background: #3278b8; }
+  .primary:disabled { background: #303946; border-color: #424b58; color: #a3adba; }
+  #error { color: #ffb4ab; background: #3b2528; border-color: #b37572; }
+  .result-thumbnail { border-color: #758091; }
+}
 @media (max-width: 760px) {
   .shell { width: calc(100% - 40px); }
   .app-header { height: 56px; }
@@ -140,7 +164,7 @@ progress { display: block; width: 100%; height: 5px; accent-color: var(--accent)
   h1 { font-size: 23px; }
   .work-grid { grid-template-columns: minmax(0, 1fr); }
   .drop-area { min-height: 208px; }
-  .settings-pane { border-left: 0; border-top: 1px solid #e4e7eb; }
+  .settings-pane { border-left: 0; border-top: 1px solid var(--border); }
   .options-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px 16px; }
   .options-grid > .full-width-option { grid-column: 1 / -1; }
   .setting-note { margin-top: 14px; }

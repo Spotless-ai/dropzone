@@ -2,13 +2,15 @@
 // Reopens actual worker outputs with Skia; not a browser/UI compatibility test.
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
 const require = createRequire(import.meta.url);
 const { createCanvas, loadImage } = require(process.argv[2] ?? '@napi-rs/canvas');
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const fixtureDirectory = process.argv[3] ? resolve(process.argv[3]) : undefined;
+if (fixtureDirectory) mkdirSync(fixtureDirectory, {recursive:true});
 const assets = resolve(root, 'dist/assets');
 const workerFile = readdirSync(assets).find(name => /^worker-.*\.js$/.test(name));
 assert(workerFile, 'Build first.');
@@ -75,7 +77,26 @@ for (const format of ['jpeg','png','webp']) {
     assert.deepEqual(await pixels(output.bytes),await pixels(tagged),`${format}/${orientation}: decoded pixels/orientation changed`);
     assert.deepEqual(Buffer.from(await input.arrayBuffer()),original,'Original was modified');
     assert(output.bytes.length<tagged.length,'Metadata was not removed');
+    replies=[];
+    await scope.onmessage({data:{operation:'metadata-read',files:[input],image:{format:'image/jpeg',quality:.85},pageSize:'a4'}});
+    assert.equal(replies.at(-1)?.kind,'metadata',`${format}/${orientation}: inspection failed`);
+    const editId=format==='png'?'png:Author':'exif:315';
+    const author=format==='png'?'Zoë 東京':'Test Writer';
+    replies=[];
+    await scope.onmessage({data:{operation:'metadata-edit',files:[input],edits:{[editId]:author},image:{format:'image/jpeg',quality:.1,targetBytes:1000,maxEdge:1},pageSize:'a4'}});
+    const edited=replies.at(-1);
+    assert.equal(edited?.kind,'success',`${format}/${orientation}: ${JSON.stringify(edited)}`);
+    assert.deepEqual(await pixels(edited.outputs[0].bytes),await pixels(tagged),`${format}/${orientation}: editing changed pixels/orientation`);
+    assert.deepEqual(Buffer.from(await input.arrayBuffer()),original,'Editing modified the input');
+    const editedFile=new File([edited.outputs[0].bytes],`edited.${format}`);
+    if(fixtureDirectory) {
+      writeFileSync(resolve(fixtureDirectory,`${format}-${orientation}-original.${format}`),tagged);
+      writeFileSync(resolve(fixtureDirectory,`${format}-${orientation}-edited.${format}`),edited.outputs[0].bytes);
+    }
+    replies=[];
+    await scope.onmessage({data:{operation:'metadata-read',files:[editedFile],image:{format:'image/jpeg',quality:.85},pageSize:'a4'}});
+    assert.equal(replies.at(-1)?.reports?.[0].fields.find(field=>field.id===editId)?.value,author,'Written tag did not read back');
   }
-  console.log(`${format}: all 8 orientations reopen with identical decoded pixels; personal tags absent; originals unchanged.`);
+  console.log(`${format}: all 8 orientations reopen with identical decoded pixels after both removal and editing; edited author reads back; originals unchanged.`);
 }
 console.log('Metadata production-worker native-codec checks passed. No canvas/bitmap API used for cleaning.');

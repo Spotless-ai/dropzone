@@ -1,14 +1,15 @@
+import type { MetadataEdits, MetadataReport } from "./metadata-editor";
 export const MiB = 1024 * 1024;
 export const LIMITS = { files: 100, totalBytes: 100 * MiB, imageBytes: 25 * MiB, pixels: 24_000_000, edge: 12_000, outputBytes: 100 * MiB } as const;
 export type Operation = "images" | "metadata" | "zip" | "pdf";
 export type ImageFormat = "image/jpeg" | "image/png" | "image/webp";
 export interface InputFile { name: string; size: number }
 export interface ImageOptions { format: ImageFormat; quality: number; maxEdge?: number; targetBytes?: number; allowResize?: boolean }
-export interface Task { operation: Operation; files: File[]; image: ImageOptions; pageSize: "a4" | "letter" }
+export interface Task { operation: Operation | "metadata-read" | "metadata-edit"; files: File[]; image: ImageOptions; pageSize: "a4" | "letter"; edits?: MetadataEdits }
 export interface Output { name: string; bytes: Uint8Array; type: string; detail: string }
-export type WorkerReply = { kind: "progress"; done: number; total: number; message?: string } | { kind: "success"; outputs: Output[] } | { kind: "error"; message: string };
+export type WorkerReply = { kind: "progress"; done: number; total: number; message?: string } | { kind: "success"; outputs: Output[] } | { kind: "metadata"; reports: MetadataReport[] } | { kind: "error"; message: string };
 
-export function validateSelection(files: InputFile[], operation: Operation): void {
+export function validateSelection(files: InputFile[], operation: Task["operation"]): void {
   if (!files.length) throw new Error("Choose at least one file.");
   if (files.length > LIMITS.files) throw new Error(`Choose no more than ${LIMITS.files} files at once.`);
   let total = 0;

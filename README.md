@@ -1,6 +1,6 @@
 # DropZone Web
 
-Local image conversion, metadata removal, ZIP creation and images to PDF, without an installer.
+Local image conversion, metadata inspection/editing/removal, ZIP creation and images to PDF, without an installer.
 
 [Open DropZone](https://spotless-ai.github.io/dropzone/) · [Report a problem](https://github.com/Spotless-ai/dropzone/issues)
 
@@ -12,6 +12,7 @@ Free and open source. Choose a tool, add your files, adjust the output settings,
 - Choose JPEG/WebP quality. PNG encoding is lossless; a smaller file is not guaranteed.
 - Set a maximum size per image in KB. Automatic quality adjustment and optional resizing help fit upload limits.
 - Remove descriptive metadata from still JPEG, PNG and WebP files without re-encoding their image data. Orientation and color information are kept for display.
+- Read EXIF/GPS values and embedded text; edit supported descriptive fields and save a separate image copy without recompression.
 - Create a ZIP from selected files. Duplicate names get numbered suffixes instead of overwriting one another. Exported names are flattened and made portable; file contents are unchanged.
 - Put selected images into an A4 or US Letter PDF, one image per page, with explicit ordering controls. Landscape images get landscape pages.
 - Cancel processing by terminating its worker. A two-minute processing timeout prevents an indefinitely running task.
@@ -52,7 +53,7 @@ The limit applies to each image separately, not to the batch, ZIP or PDF.
 
 ### Remove metadata without recompression
 
-Choose **Remove metadata**, add still JPEG, PNG or WebP images, and download
+Choose **Metadata → Remove metadata**, add still JPEG, PNG or WebP images, and download
 the `-clean` copies. This mode edits the file container, not the encoded picture:
 it never calls an image encoder, changes format, resizes or modifies originals.
 Target-size and quality settings from the Images tab do not apply.
@@ -80,6 +81,49 @@ Target-size and quality settings from the Images tab do not apply.
 Implementation references: [PNG specification](https://www.w3.org/TR/png-3/),
 [WebP container specification](https://developers.google.com/speed/webp/docs/riff_container),
 and [JFIF structure](https://www.w3.org/Graphics/JPEG/jfif3.pdf).
+
+### View and edit metadata
+
+Choose **Metadata → View and edit**, add images and press **Read metadata**.
+Select a file in the inspection workspace, change supported fields, then choose
+**Save edited copy**. Each download has an `-edited` suffix. Pending edits are
+kept when switching between inspected files or tools; changing the file selection
+asks before discarding them. Editing is per image, not a bulk overwrite.
+
+| Format | Editable fields | Text support |
+| --- | --- | --- |
+| JPEG and WebP | EXIF IFD0 description, artist/author, copyright, software, image timestamp | Basic Latin/ASCII, up to 2048 characters per field |
+| PNG | Native Title, Author, Description, Copyright, Creation Time, Software, Source, Comment | Unicode, up to 2048 characters per field |
+
+The EXIF image timestamp is `YYYY:MM:DD HH:MM:SS` without a time zone; it is not
+the separate camera **Date taken** field. Blank editable fields remove their
+active tags. Already-empty fields are not written. Unsupported fields remain
+read-only. EXIF embedded in PNG is displayed but not edited; native PNG text is
+edited instead. Different groups can contain contradictory values; this does not
+synchronize EXIF, XMP and IPTC fields automatically.
+
+The inspector reads bounded EXIF IFD0, EXIF/GPS/interoperability and linked
+thumbnail directories, PNG text (including bounded compressed text), JPEG
+comments and XMP text packets. XMP packets are displayed as plain text, not
+executed or editable XML. Binary maker notes, Photoshop/IPTC and color-profile
+contents are not expanded. Unknown EXIF tags show their numeric ID; large values
+are summarized or truncated. Duplicate/unsupported fields are read-only. This is
+not a complete metadata dump or a forensic inspector.
+
+**Editing is not privacy cleaning.** Encoded image data and unrelated metadata
+are preserved. For EXIF edits, a replacement IFD0 is appended inside the EXIF
+container while original offsets remain stable for linked directories and opaque
+maker notes. Old unreferenced EXIF values can remain in the file. Use **Remove
+metadata** when you want descriptive metadata removed; editing a field to blank
+is not secure erasure. Any metadata edit can invalidate content credentials.
+Keep originals when provenance matters.
+
+Parsing is capped at 256 entries per EXIF directory, 512 displayed fields,
+four nested directory levels, 64 KiB decoded per PNG text chunk and 2 MB of
+inspection reports per batch. Damaged/out-of-bounds structures and excessive
+metadata fail explicitly. JPEG EXIF growth must fit its segment size, and edited
+files must stay under 25 MiB. These checks do not validate every compressed image
+bitstream. See [0.4.0 verification](docs/release-0.4.0.md).
 
 ## Privacy and limits
 

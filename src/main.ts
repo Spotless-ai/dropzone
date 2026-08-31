@@ -1,4 +1,5 @@
 import "./style.css";
+import { createMetadataWorkspace } from "./metadata-ui";
 import { formatSize, targetBytesFromKB, validateImageOptions, validateSelection, type Operation, type Task, type WorkerReply } from "./policy";
 
 const element = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -20,6 +21,8 @@ let files: File[] = [];
 let worker: Worker | undefined;
 let deadline: ReturnType<typeof setTimeout> | undefined;
 let urls: string[] = [];
+const metadataMode = element<HTMLSelectElement>("metadata-mode");
+const metadata = createMetadataWorkspace({onChange:revokeResults,onSave:(file,edits)=>startTask({operation:"metadata-edit",files:[file],edits,image:{format:"image/jpeg",quality:.85},pageSize:"a4"})});
 
 function showError(message: string) { error.textContent = message; error.hidden = false; error.focus(); }
 function clearError() { error.textContent = ""; error.hidden = true; }
@@ -69,7 +72,7 @@ function renderFiles() {
       button("↑", "Move up", index === 0, () => { [files[index - 1], files[index]] = [files[index], files[index - 1]]; renderFiles(); focusRow(index - 1); });
       button("↓", "Move down", index === files.length - 1, () => { [files[index + 1], files[index]] = [files[index], files[index + 1]]; renderFiles(); focusRow(index + 1); });
     }
-    button("×", "Remove file", false, () => { files.splice(index, 1); clearError(); renderFiles(); updateSelectionStatus(); focusRow(Math.min(index, files.length - 1)); });
+    button("×", "Remove file", false, () => { if (!metadata.discard()) return; files.splice(index, 1); revokeResults(); clearError(); renderFiles(); updateSelectionStatus(); focusRow(Math.min(index, files.length - 1)); });
     row.append(badge, info, actions); list.append(row);
   });
   element("selected-files").hidden = files.length === 0;
@@ -77,7 +80,7 @@ function renderFiles() {
   element("drop-title").textContent = files.length ? "Drop more files here" : operation === "zip" ? "Drop your files here" : "Drop your images here";
   element("picker-label").textContent = files.length ? "Add files" : operation === "zip" ? "Choose files" : "Choose images";
   element("file-count").textContent = `${files.length} · ${formatSize(files.reduce((sum, file) => sum + file.size, 0))}`;
-  run.disabled = Boolean(worker) || files.length === 0;
+  run.disabled = Boolean(worker) || files.length === 0 || (operation === "metadata" && metadataMode.value === "read" && metadata.complete());
   clear.disabled = Boolean(worker) || files.length === 0;
 }
 function updateSelectionStatus() {
@@ -89,11 +92,12 @@ function focusRow(index: number) {
   (control ?? picker).focus();
 }
 function setBusy(busy: boolean) {
-  for (const control of form.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>("input, select, button")) control.disabled = busy;
+  for (const control of form.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLButtonElement | HTMLTextAreaElement>("input, select, button, textarea")) control.disabled = busy;
   cancel.disabled = false; cancel.hidden = !busy;
   progress.hidden = !busy;
   form.setAttribute("aria-busy", String(busy));
   updateQuality(); renderFiles();
+  metadata.setBusy(busy);
 }
 function stopWorker() {
   worker?.terminate(); worker = undefined;
@@ -102,15 +106,16 @@ function stopWorker() {
   setBusy(false);
 }
 function addFiles(incoming: File[]) {
-  if (worker) return;
+  if (worker || !incoming.length) return;
   const combined = [...files, ...incoming];
   try { validateSelection(combined, operation); }
   catch (problem) { showError((problem as Error).message); return; }
-  files = combined; clearError(); renderFiles();
+  if (!metadata.discard()) return;
+  files = combined; revokeResults(); clearError(); renderFiles();
   updateSelectionStatus();
 }
 picker.addEventListener("change", () => { addFiles(Array.from(picker.files ?? [])); picker.value = ""; });
-clear.addEventListener("click", () => { files = []; revokeResults(); clearError(); renderFiles(); status.textContent = "Choose files to begin."; picker.focus(); });
+clear.addEventListener("click", () => { if (!metadata.discard()) return; files = []; revokeResults(); clearError(); renderFiles(); status.textContent = "Choose files to begin."; picker.focus(); });
 const drop = element("drop-area");
 // Prevent accidental navigation when a file is dropped outside the target.
 document.addEventListener("dragover", event => { if (event.dataTransfer?.types.includes("Files")) event.preventDefault(); });
@@ -123,33 +128,39 @@ drop.addEventListener("drop", event => {
 });
 for (const toolButton of toolButtons) toolButton.addEventListener("click", () => {
   if (worker) return;
-  const labels = { images: "Convert images", metadata: "Remove metadata", zip: "Create ZIP", pdf: "Images to PDF" };
+  const labels = { images: "Convert images", metadata: "Image metadata", zip: "Create ZIP", pdf: "Images to PDF" };
   const mode = toolButton.dataset.operation as Operation;
   operation = mode;
   for (const button of toolButtons) button.setAttribute("aria-pressed", String(button === toolButton));
   element("tool-title").textContent = labels[mode]; run.textContent = mode === "pdf" ? "Create PDF" : labels[mode];
-  element("tool-description").textContent = { images: "Change the format. Keep the original.", metadata: "Remove personal tags. No recompression.", zip: "Bring your files together in one download.", pdf: "Your images, in order, in a single document." }[mode];
+  element("tool-description").textContent = { images: "Change the format. Keep the original.", metadata: "Read tags, edit supported fields, or remove personal metadata.", zip: "Bring your files together in one download.", pdf: "Your images, in order, in a single document." }[mode];
   element("image-options").hidden = mode !== "images";
   element("pdf-options").hidden = mode !== "pdf";
   element("zip-note").hidden = mode !== "zip";
   element("metadata-note").hidden = mode !== "metadata";
   picker.accept = mode === "zip" ? "" : "image/jpeg,image/png,image/webp";
   element("file-help").textContent = mode === "zip" ? "Any file type · up to 100 files · 100 MB total" : "JPEG, PNG or WebP · 25 MB per image";
-  clearError(); updateQuality(); renderFiles(); updateSelectionStatus();
+  clearError(); updateQuality(); updateMetadataMode(); renderFiles(); updateSelectionStatus();
 });
+function updateMetadataMode() {
+  const read = metadataMode.value === "read";
+  metadata.show(operation === "metadata" && read);
+  element("metadata-read-note").hidden = !read;
+  element("metadata-remove-note").hidden = read;
+  if (operation === "metadata") run.textContent = read ? "Read metadata" : "Remove metadata";
+  renderFiles();
+}
+metadataMode.addEventListener("change",()=>{revokeResults(); clearError(); updateMetadataMode(); updateSelectionStatus();});
 format.addEventListener("change", updateQuality);
 quality.addEventListener("input", updateQuality);
 targetKB.addEventListener("input", updateQuality);
 cancel.addEventListener("click", () => { stopWorker(); status.textContent = "Cancelled. Original files were not changed."; run.focus(); });
 
-form.addEventListener("submit", event => {
-  event.preventDefault();
+function startTask(task: Task) {
   if (worker) return;
   clearError();
-  const maxEdge = element<HTMLInputElement>("max-edge").value;
   try {
-    const task: Task = { operation, files: [...files], image: { format: format.value as Task["image"]["format"], quality: Number(quality.value) / 100, maxEdge: maxEdge.trim() ? Number(maxEdge) : undefined, targetBytes: operation === "images" ? targetBytesFromKB(targetKB.value) : undefined, allowResize: operation === "images" && allowResize.checked }, pageSize: element<HTMLSelectElement>("page-size").value as Task["pageSize"] };
-    validateSelection(files, task.operation);
+    validateSelection(task.files, task.operation);
     if (task.operation === "images") validateImageOptions(task.image);
     revokeResults();
     worker = new Worker(new URL("./worker.ts", import.meta.url), { type: "module" });
@@ -161,6 +172,7 @@ form.addEventListener("submit", event => {
       if (data.kind === "progress") { progress.max = data.total; progress.value = data.done; status.textContent = data.message ?? `Processing: ${data.done} of ${data.total} steps…`; return; }
       stopWorker();
       if (data.kind === "error") { status.textContent = "No results were generated."; showError(data.message); return; }
+      if (data.kind === "metadata") { metadata.receive(task.files,data.reports); renderFiles(); status.textContent="Metadata loaded below. Select an image to inspect or edit. Originals are unchanged."; return; }
       for (const output of data.outputs) {
         const url = URL.createObjectURL(new Blob([new Uint8Array(output.bytes)], { type: output.type })); urls.push(url);
         const row = document.createElement("li");
@@ -184,6 +196,15 @@ form.addEventListener("submit", event => {
     deadline = setTimeout(() => { stopWorker(); status.textContent = "Processing stopped."; showError("The task exceeded two minutes. Try fewer or smaller files."); }, 120_000);
     worker.postMessage(task);
   } catch (problem) { stopWorker(); showError(problem instanceof Error ? problem.message : "Unable to start processing."); }
+}
+form.addEventListener("submit", event => {
+  event.preventDefault();
+  if (worker || (operation === "metadata" && metadataMode.value === "read" && metadata.complete())) return;
+  try {
+    const maxEdge = element<HTMLInputElement>("max-edge").value;
+    startTask({operation:operation === "metadata" && metadataMode.value === "read" ? "metadata-read" : operation,files:[...files],image:{format:format.value as Task["image"]["format"],quality:Number(quality.value)/100,maxEdge:maxEdge.trim()?Number(maxEdge):undefined,targetBytes:operation==="images"?targetBytesFromKB(targetKB.value):undefined,allowResize:operation==="images"&&allowResize.checked},pageSize:element<HTMLSelectElement>("page-size").value as Task["pageSize"]});
+  } catch (problem) { showError(problem instanceof Error ? problem.message : "Unable to start processing."); }
 });
-window.addEventListener("pagehide", () => { stopWorker(); files = []; revokeResults(); renderFiles(); status.textContent = "Choose files to begin."; });
+window.addEventListener("beforeunload",event=>{if(metadata.dirty()){event.preventDefault();event.returnValue="";}});
+window.addEventListener("pagehide", () => { stopWorker(); metadata.discard(true); files = []; revokeResults(); renderFiles(); status.textContent = "Choose files to begin."; });
 updateQuality(); renderFiles();

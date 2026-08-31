@@ -116,10 +116,28 @@ progress { display: block; width: 100%; height: 5px; accent-color: var(--accent)
 .privacy { margin-top: 16px; font-size: 11px; color: var(--muted); }
 .privacy summary { width: fit-content; padding: 4px 0; }
 .privacy p { font-size: 12px; max-width: 820px; }
+.metadata-workspace { margin-top: 20px; padding: 24px; }
+.metadata-mode-label, .metadata-file-label { display: grid; gap: 8px; font-size: 12px; }
+.metadata-file-label { max-width: 480px; margin-block: 20px; }
+#metadata-remove-note { margin-top: 24px; }
+.metadata-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 28px; }
+.metadata-grid > * { min-width: 0; }
+#metadata-fields { display: grid; gap: 16px; margin-block: 16px; }
+#metadata-fields textarea { width: 100%; min-width: 0; min-height: 58px; resize: vertical; border: 1px solid #cbd0d7; border-radius: 5px; padding: 8px 10px; background: #fff; color: inherit; font: inherit; font-size: 13px; }
+.metadata-table-wrap { max-height: 520px; overflow: auto; border-block: 1px solid var(--border); }
+.metadata-table-wrap table { table-layout: fixed; width: 100%; border-collapse: collapse; font-size: 12px; }
+.metadata-table-wrap th, .metadata-table-wrap td { padding: 10px 6px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; overflow-wrap: anywhere; white-space: pre-wrap; }
+.metadata-table-wrap th { width: 44%; font-weight: 400; }
+.metadata-table-wrap th strong { font-weight: 500; }
+.metadata-table-wrap th span { display: block; font-size: 10px; color: var(--muted); margin-top: 4px; }
+.metadata-warning { border-top: 1px solid var(--border); padding-top: 18px; color: var(--muted); font-size: 12px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+@media(max-width:760px) { .metadata-grid { grid-template-columns: minmax(0,1fr); } .metadata-workspace { padding: 18px; } }
 @media screen and (prefers-color-scheme: dark) {
   :root { color: #e8edf3; background: #171b21; --border: #424b58; --muted: #b5bfcc; --accent: #80bfff; }
   button, select, input[type="number"], .file-picker, .save-button { background: #222831; color: #e8edf3; border-color: #758091; }
   input::placeholder { color: #b5bfcc; opacity: 1; }
+  #metadata-fields textarea { background: #222831; border-color: #758091; }
   button:hover, .save-button:hover, .file-picker:hover { background: #303946; }
   .app-header, .work-panel { background: #222831; }
   .tool-nav button { background: transparent; color: var(--muted); }

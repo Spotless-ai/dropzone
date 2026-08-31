@@ -57,7 +57,7 @@ function crc32(bytes: Uint8Array): number {
   for (const byte of bytes) crc = crcTable[(crc ^ byte) & 255] ^ (crc >>> 8);
   return (crc ^ 0xffffffff) >>> 0;
 }
-function pngChunk(tag: string, payload: Uint8Array): Uint8Array {
+export function pngChunk(tag: string, payload: Uint8Array): Uint8Array {
   const result = new Uint8Array(payload.length + 12);
   const view = viewOf(result);
   view.setUint32(0, payload.length);
@@ -65,12 +65,13 @@ function pngChunk(tag: string, payload: Uint8Array): Uint8Array {
   view.setUint32(result.length - 4, crc32(result.subarray(4, result.length - 4)));
   return result;
 }
-function jpegSegment(marker: number, payload: Uint8Array): Uint8Array {
+export function jpegSegment(marker: number, payload: Uint8Array): Uint8Array {
+  if (payload.length > 65533) throw new Error("The edited JPEG metadata block is too large.");
   const result = new Uint8Array(payload.length + 4);
   result.set([255, marker]); viewOf(result).setUint16(2, payload.length + 2); result.set(payload, 4);
   return result;
 }
-function riffChunk(tag: string, payload: Uint8Array): Uint8Array {
+export function riffChunk(tag: string, payload: Uint8Array): Uint8Array {
   const result = new Uint8Array(payload.length + 8 + payload.length % 2);
   result.set(new TextEncoder().encode(tag)); viewOf(result).setUint32(4, payload.length, true); result.set(payload, 8);
   return result;

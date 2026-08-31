@@ -20,6 +20,19 @@ beforeEach(async () => {
 });
 
 describe("metadata worker protocol", () => {
+  it("returns inspection reports without converting images", async()=>{
+    const input=task();input.operation="metadata-read";input.files=[new File([new Uint8Array(png())],"photo.png")];
+    await scope.onmessage!({data:input});expect(replies.at(-1)).toMatchObject({kind:"metadata",reports:[{format:"image/png",width:1,height:1}]});expect(converted).not.toHaveBeenCalled();
+  });
+  it("edits one image and returns a separate named copy",async()=>{
+    const input=task();input.operation="metadata-edit";input.files=[new File([new Uint8Array(png())],"photo.png")];input.edits={"png:Author":"Writer"};
+    await scope.onmessage!({data:input});expect(replies.at(-1)).toMatchObject({kind:"success",outputs:[{name:"photo-edited.png",type:"image/png"}]});expect(converted).not.toHaveBeenCalled();expect(new Uint8Array(await input.files[0].arrayBuffer())).toEqual(png());
+  });
+  it("rejects edit requests with multiple files or technical tags",async()=>{
+    const input=task();input.operation="metadata-edit";input.files=[new File([new Uint8Array(png())],"photo.png")];input.edits={"exif:274":"8"};
+    await scope.onmessage!({data:input});expect(replies.at(-1)).toMatchObject({kind:"error",message:expect.stringContaining("read-only")});
+    input.files.push(input.files[0]);await scope.onmessage!({data:input});expect(replies.at(-1)).toMatchObject({kind:"error",message:expect.stringContaining("one inspected image")});
+  });
   it("returns same-format clean copies without invoking conversion or PDF codecs", async () => {
     const input = task(); input.operation = "metadata";
     input.files = [new File([new Uint8Array(png())], "picture.png"), new File([new Uint8Array(png())], "picture.png")];

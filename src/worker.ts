@@ -1,16 +1,38 @@
 import { createArchive } from "./archive";
 import { convertImage } from "./convert";
 import { stripImageMetadata } from "./metadata";
+import { readImageMetadata, editImageMetadata } from "./metadata-editor";
 import { createImagePdf, type PdfImage } from "./pdf";
 import { formatSize, imageOutputName, LIMITS, uniqueName, validateSelection, type ImageOptions, type Output, type Task, type WorkerReply } from "./policy";
 
 const scope = self as unknown as { onmessage: (event: MessageEvent<Task>) => void; postMessage: (message: WorkerReply, transfer?: Transferable[]) => void };
 scope.onmessage = async ({ data: task }) => {
   try {
-    if (!["images", "metadata", "zip", "pdf"].includes(task.operation)) throw new Error("Choose a supported tool.");
+    if (!["images", "metadata", "metadata-read", "metadata-edit", "zip", "pdf"].includes(task.operation)) throw new Error("Choose a supported tool.");
     validateSelection(task.files, task.operation);
     const progress = (done: number, total = task.files.length) => scope.postMessage({ kind: "progress", done, total });
     const outputs: Output[] = [];
+    if (task.operation === "metadata-read") {
+      const reports = []; let textSize = 0;
+      for (const [index,file] of task.files.entries()) {
+        try {
+          const report = readImageMetadata(new Uint8Array(await file.arrayBuffer()));
+          textSize += JSON.stringify(report).length;
+          if (textSize > 2_000_000) throw new Error("Too much metadata to display in one batch. Try fewer files.");
+          reports.push(report); progress(index+1);
+        } catch (error) { throw new Error(`${file.name}: ${error instanceof Error ? error.message : "Unable to read metadata."}`); }
+      }
+      scope.postMessage({kind:"metadata",reports}); return;
+    }
+    if (task.operation === "metadata-edit") {
+      if (task.files.length !== 1 || !task.edits || !Object.keys(task.edits).length) throw new Error("Choose one inspected image and change at least one supported field.");
+      const file = task.files[0];
+      try {
+        const result = editImageMetadata(new Uint8Array(await file.arrayBuffer()), task.edits);
+        outputs.push({name:imageOutputName(file.name,result.report.format).replace(/(\.[^.]+)$/,"-edited$1"),bytes:result.bytes,type:result.report.format,detail:"Metadata edited · no re-encoding · other metadata kept"});
+      } catch (error) { throw new Error(`${file.name}: ${error instanceof Error ? error.message : "Unable to edit metadata."}`); }
+      scope.postMessage({kind:"success",outputs},outputs.map(output=>output.bytes.buffer as ArrayBuffer)); return;
+    }
     if (task.operation === "zip") {
       const inputs = [];
       for (const [index, file] of task.files.entries()) {

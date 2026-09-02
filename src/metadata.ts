@@ -8,6 +8,7 @@ export interface MetadataResult extends ImageInfo {
   changed: boolean;
   orientationKept: boolean;
   colorProfileKept: boolean;
+  auxiliaryImagesRemoved: boolean;
 }
 const invalid = () => new Error("This image has an unsupported or damaged structure. No cleaned file was created.");
 const text = (bytes: Uint8Array, start = 0, size = bytes.length) => new TextDecoder("latin1").decode(bytes.subarray(start, start + size));
@@ -85,6 +86,7 @@ export function stripImageMetadata(source: Uint8Array): MetadataResult {
   let orientation: number | undefined;
   let exifSeen = false;
   let colorProfileKept = false;
+  let auxiliaryImagesRemoved = false;
   const cleanExif = (payload: Uint8Array) => {
     if (exifSeen) throw invalid();
     exifSeen = true;
@@ -112,14 +114,19 @@ export function stripImageMetadata(source: Uint8Array): MetadataResult {
         const exif = cleanExif(payload);
         if (exif) parts.push(jpegSegment(marker, join([new Uint8Array([69,120,105,102,0,0]), exif])));
       } else if (marker === 0xe0 && text(payload, 0, 5) === "JFIF\0") {
-        if (payload.length < 14 || payload.length !== 14 + 3 * payload[12] * payload[13]) throw invalid();
+        if (payload.length < 14 || payload.length < 14 + 3 * payload[12] * payload[13]) throw invalid();
         const header = payload.slice(0, 14); header[12] = 0; header[13] = 0;
-        parts.push(jpegSegment(marker, header)); // Keep density; remove thumbnail pixels.
+        // Keep density; remove thumbnail pixels and phone-vendor extensions that
+        // some valid JPEGs append after the JFIF thumbnail area.
+        parts.push(jpegSegment(marker, header));
       } else if (marker === 0xe2 && text(payload, 0, 12) === "ICC_PROFILE\0") {
         if (payload.length < 14 || payload[12] < 1 || payload[12] > payload[13]) throw invalid();
         colorProfileKept = true; parts.push(segment);
       } else if (marker === 0xe2 && text(payload, 0, 4) === "MPF\0") {
-        throw new Error("Multi-picture or HDR gain-map JPEGs are not supported by metadata removal. Keep the original.");
+        // MPF offsets refer to auxiliary JPEGs appended after the primary EOI.
+        // Removing the index and stopping at that EOI keeps the legacy-compatible
+        // primary image intact while dropping gain maps, depth maps or extra shots.
+        auxiliaryImagesRemoved = true;
       } else if (marker === 0xee && text(payload, 0, 5) === "Adobe") {
         if (payload.length !== 12) throw invalid();
         parts.push(segment); // Color transform, including CMYK/YCCK interpretation.
@@ -224,5 +231,5 @@ export function stripImageMetadata(source: Uint8Array): MetadataResult {
     viewOf(parts[0]).setUint32(4, parts.reduce((sum, part) => sum + part.length, 0) - 8, true);
   }
   const bytes = join(parts);
-  return { ...info, bytes, changed: !equal(bytes, source), orientationKept: Boolean(orientation && orientation !== 1), colorProfileKept };
+  return { ...info, bytes, changed: !equal(bytes, source), orientationKept: Boolean(orientation && orientation !== 1), colorProfileKept, auxiliaryImagesRemoved };
 }

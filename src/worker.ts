@@ -54,7 +54,7 @@ scope.onmessage = async ({ data: task }) => {
             if (generatedBytes > LIMITS.outputBytes) throw new Error("The results exceed the 100 MB output limit. Try fewer files.");
             const kept = [result.orientationKept ? "orientation" : "", result.colorProfileKept ? "color profile" : ""].filter(Boolean);
             const cleanName = imageOutputName(file.name, result.format).replace(/(\.[^.]+)$/, "-clean$1");
-            outputs.push({ name: uniqueName(cleanName, used), type: result.format, bytes: result.bytes, detail: `${result.changed ? "Metadata cleaned" : "No metadata changes needed"} · no re-encoding${kept.length ? ` · ${kept.join(" and ")} kept` : ""} · original ${formatSize(file.size)}` });
+            outputs.push({ name: uniqueName(cleanName, used), type: result.format, bytes: result.bytes, detail: `${result.changed ? "Metadata cleaned" : "No metadata changes needed"} · no re-encoding${kept.length ? ` · ${kept.join(" and ")} kept` : ""}${result.auxiliaryImagesRemoved ? " · HDR/extra picture removed; primary SDR photo kept" : ""} · original ${formatSize(file.size)}` });
             progress(index + 1);
             continue;
           }

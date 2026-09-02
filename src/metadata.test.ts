@@ -126,8 +126,16 @@ describe("lossless metadata removal", () => {
     const result = stripImageMetadata(join(base.subarray(0,base.length-2),tail,ascii("PRIVATE")));
     expect(result.bytes).toEqual(join(base.subarray(0,base.length-2),scan,entropy,new Uint8Array([255,217])));
   });
-  it("rejects multi-picture/HDR JPEGs and JPEGs without completed scan data", () => {
-    expect(() => stripImageMetadata(jpeg(segment(0xe2,ascii("MPF\0"))))).toThrow("Multi-picture");
+  it("keeps the primary SDR JPEG while removing MPF auxiliary pictures and JFIF vendor data", () => {
+    const jfif = join(ascii("JFIF\0"),new Uint8Array([1,2,1,0,72,0,72,0,0]),ascii("AMPF"));
+    const primary = jpeg(segment(0xe0,jfif),segment(0xe2,ascii("MPF\0PRIVATE INDEX")));
+    const result = stripImageMetadata(join(primary,jpeg(segment(0xe1,ascii("PRIVATE AUXILIARY")))));
+    const cleanJfif = join(ascii("JFIF\0"),new Uint8Array([1,2,1,0,72,0,72,0,0]));
+    expect(result.bytes).toEqual(jpeg(segment(0xe0,cleanJfif)));
+    expect(result.auxiliaryImagesRemoved).toBe(true);
+    expect(new TextDecoder().decode(result.bytes)).not.toContain("PRIVATE");
+  });
+  it("rejects JPEGs without completed scan data", () => {
     expect(() => stripImageMetadata(jpeg().subarray(0,jpeg().length-2))).toThrow("damaged");
     expect(() => stripImageMetadata(join(new Uint8Array([255,216]),frame,new Uint8Array([255,217])))).toThrow("damaged");
   });

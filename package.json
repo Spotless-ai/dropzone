@@ -1,6 +1,6 @@
 {
   "name": "dropzone-web",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "description": "Local image conversion, metadata viewing/editing/removal, ZIP creation and images to PDF in your browser.",
   "type": "module",

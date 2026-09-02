@@ -71,10 +71,13 @@ Target-size and quality settings from the Images tab do not apply.
   This is **not an anonymity guarantee**, malware scanner or forensic scrubber.
 - Copyright tags and embedded provenance/content credentials may be removed.
   Keep the original when those records matter.
-- Only supported still-image structures are accepted. Animation, multi-picture
-  and recognized HDR gain-map JPEG containers are rejected. Damaged metadata,
-  invalid PNG checksums, incomplete containers and unsupported structures stop
-  the batch; this parser does not fully validate compressed image bitstreams.
+- Only supported still-image structures are accepted. For phone JPEGs with an
+  MPF HDR gain map or extra picture, the cleaned copy keeps the primary SDR
+  photo and removes auxiliary image data without re-encoding it; HDR display,
+  depth or refocus behavior can be lost. Animation, damaged metadata, invalid
+  PNG checksums, incomplete containers and unsupported structures stop the
+  batch; this parser does not fully validate compressed image bitstreams. See
+  the [0.4.1 phone-photo compatibility verification](docs/release-0.4.1.md).
 - Already-clean files are labeled **No metadata changes needed**. Size savings
   depend on the original metadata; this is not an image compression mode.
 

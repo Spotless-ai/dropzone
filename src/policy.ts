@@ -1,7 +1,7 @@
 import type { MetadataEdits, MetadataReport } from "./metadata-editor";
 export const MiB = 1024 * 1024;
 export const LIMITS = { files: 100, totalBytes: 100 * MiB, imageBytes: 25 * MiB, pixels: 24_000_000, edge: 12_000, outputBytes: 100 * MiB } as const;
-export type Operation = "images" | "metadata" | "zip" | "pdf";
+export type Operation = "images" | "metadata" | "zip" | "pdf" | "normalize-pdf";
 export type ImageFormat = "image/jpeg" | "image/png" | "image/webp";
 export interface InputFile { name: string; size: number }
 export interface ImageOptions { format: ImageFormat; quality: number; maxEdge?: number; targetBytes?: number; allowResize?: boolean }
@@ -15,7 +15,8 @@ export function validateSelection(files: InputFile[], operation: Task["operation
   let total = 0;
   for (const file of files) {
     if (!Number.isSafeInteger(file.size) || file.size < 0) throw new Error("A file has an invalid size.");
-    if (operation !== "zip" && file.size > LIMITS.imageBytes) throw new Error(`${file.name}: images must be 25 MB or smaller.`);
+    // Enforce the 25 MB per-file limit only for image-related operations.
+    if ((operation === "images" || operation === "metadata" || operation === "pdf") && file.size > LIMITS.imageBytes) throw new Error(`${file.name}: images must be 25 MB or smaller.`);
     total += file.size;
   }
   if (total > LIMITS.totalBytes) throw new Error("Choose at most 100 MB of files at once.");

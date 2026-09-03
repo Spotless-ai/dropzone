@@ -3,12 +3,13 @@ import { convertImage } from "./convert";
 import { stripImageMetadata } from "./metadata";
 import { readImageMetadata, editImageMetadata } from "./metadata-editor";
 import { createImagePdf, type PdfImage } from "./pdf";
+import { normalizePdf } from "./pdf-normalize";
 import { formatSize, imageOutputName, LIMITS, uniqueName, validateSelection, type ImageOptions, type Output, type Task, type WorkerReply } from "./policy";
 
 const scope = self as unknown as { onmessage: (event: MessageEvent<Task>) => void; postMessage: (message: WorkerReply, transfer?: Transferable[]) => void };
 scope.onmessage = async ({ data: task }) => {
   try {
-    if (!["images", "metadata", "metadata-read", "metadata-edit", "zip", "pdf"].includes(task.operation)) throw new Error("Choose a supported tool.");
+    if (!["images", "metadata", "metadata-read", "metadata-edit", "zip", "pdf", "normalize-pdf"].includes(task.operation)) throw new Error("Choose a supported tool.");
     validateSelection(task.files, task.operation);
     const progress = (done: number, total = task.files.length) => scope.postMessage({ kind: "progress", done, total });
     const outputs: Output[] = [];
@@ -46,6 +47,22 @@ scope.onmessage = async ({ data: task }) => {
       const used = new Set<string>();
       const pdfImages: PdfImage[] = [];
       let generatedBytes = 0;
+
+      // Special-case: normalize PDFs operation (re-serialize or extract embedded PDF)
+      if (task.operation === "normalize-pdf") {
+        for (const [index, file] of task.files.entries()) {
+          try {
+            const bytes = new Uint8Array(await file.arrayBuffer());
+            const normalized = await normalizePdf(bytes);
+            const stem = file.name.replace(/(\.[^.]+)$/, "");
+            const outName = uniqueName(`${stem}-normalized.pdf`, used);
+            outputs.push({ name: outName, bytes: normalized.bytes, type: "application/pdf", detail: `Normalized PDF${normalized.repaired ? " · repaired" : ""} · original ${formatSize(file.size)}` });
+            progress(index + 1);
+          } catch (error) { throw new Error(`${file.name}: ${error instanceof Error ? error.message : "Unable to normalize this PDF."}`); }
+        }
+        scope.postMessage({ kind: "success", outputs }, outputs.map(output => output.bytes.buffer as ArrayBuffer)); return;
+      }
+
       for (const [index, file] of task.files.entries()) {
         try {
           if (task.operation === "metadata") {

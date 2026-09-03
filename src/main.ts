@@ -43,6 +43,7 @@ function updateQuality() {
   if (!hasTarget) allowResize.checked = false;
   element<HTMLFieldSetElement>("image-options").disabled = Boolean(worker) || operation !== "images";
   element<HTMLFieldSetElement>("pdf-options").disabled = Boolean(worker) || operation !== "pdf";
+  element<HTMLFieldSetElement>("normalize-options").disabled = Boolean(worker) || operation !== "normalize-pdf";
   element("format-note").textContent = { "image/jpeg": "Transparent areas become white in JPEG.", "image/png": "Lossless output. The file may be larger than the original.", "image/webp": "Supports transparency. Check that your destination accepts WebP." }[format.value as Task["image"]["format"]];
 }
 function renderFiles() {
@@ -77,8 +78,8 @@ function renderFiles() {
   });
   element("selected-files").hidden = files.length === 0;
   element("drop-area").classList.toggle("has-files", files.length > 0);
-  element("drop-title").textContent = files.length ? "Drop more files here" : operation === "zip" ? "Drop your files here" : "Drop your images here";
-  element("picker-label").textContent = files.length ? "Add files" : operation === "zip" ? "Choose files" : "Choose images";
+  element("drop-title").textContent = files.length ? "Drop more files here" : operation === "zip" ? "Drop your files here" : operation === "normalize-pdf" ? "Drop your PDF files here" : "Drop your images here";
+  element("picker-label").textContent = files.length ? "Add files" : operation === "zip" ? "Choose files" : operation === "normalize-pdf" ? "Choose PDFs" : "Choose images";
   element("file-count").textContent = `${files.length} · ${formatSize(files.reduce((sum, file) => sum + file.size, 0))}`;
   run.disabled = Boolean(worker) || files.length === 0 || (operation === "metadata" && metadataMode.value === "read" && metadata.complete());
   clear.disabled = Boolean(worker) || files.length === 0;
@@ -128,18 +129,19 @@ drop.addEventListener("drop", event => {
 });
 for (const toolButton of toolButtons) toolButton.addEventListener("click", () => {
   if (worker) return;
-  const labels = { images: "Convert images", metadata: "Image metadata", zip: "Create ZIP", pdf: "Images to PDF" };
+  const labels = { images: "Convert images", metadata: "Image metadata", zip: "Create ZIP", pdf: "Images to PDF", "normalize-pdf": "Normalize PDFs" } as Record<string,string>;
   const mode = toolButton.dataset.operation as Operation;
   operation = mode;
   for (const button of toolButtons) button.setAttribute("aria-pressed", String(button === toolButton));
   element("tool-title").textContent = labels[mode]; run.textContent = mode === "pdf" ? "Create PDF" : labels[mode];
-  element("tool-description").textContent = { images: "Change the format. Keep the original.", metadata: "Read tags, edit supported fields, or remove personal metadata.", zip: "Bring your files together in one download.", pdf: "Your images, in order, in a single document." }[mode];
+  element("tool-description").textContent = { images: "Change the format. Keep the original.", metadata: "Read tags, edit supported fields, or remove personal metadata.", zip: "Bring your files together in one download.", pdf: "Your images, in order, in a single document.", "normalize-pdf": "Re-serialize or extract embedded PDF data to produce normalized PDF copies." }[mode];
   element("image-options").hidden = mode !== "images";
   element("pdf-options").hidden = mode !== "pdf";
+  element("normalize-options").hidden = mode !== "normalize-pdf";
   element("zip-note").hidden = mode !== "zip";
   element("metadata-note").hidden = mode !== "metadata";
-  picker.accept = mode === "zip" ? "" : "image/jpeg,image/png,image/webp";
-  element("file-help").textContent = mode === "zip" ? "Any file type · up to 100 files · 100 MB total" : "JPEG, PNG or WebP · 25 MB per image";
+  picker.accept = mode === "zip" ? "" : mode === "normalize-pdf" ? "application/pdf" : "image/jpeg,image/png,image/webp";
+  element("file-help").textContent = mode === "zip" ? "Any file type · up to 100 files · 100 MB total" : mode === "normalize-pdf" ? "PDF files only · up to 100 MB total" : "JPEG, PNG or WebP · 25 MB per image";
   clearError(); updateQuality(); updateMetadataMode(); renderFiles(); updateSelectionStatus();
 });
 function updateMetadataMode() {

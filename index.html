@@ -24,6 +24,7 @@
           <button type="button" data-operation="metadata" aria-pressed="false">Metadata</button>
           <button type="button" data-operation="zip" aria-pressed="false">Create ZIP</button>
           <button type="button" data-operation="pdf" aria-pressed="false">Images to PDF</button>
+          <button type="button" data-operation="normalize-pdf" aria-pressed="false">Normalize PDFs</button>
         </div>
         <div class="workspace-heading"><h1 id="tool-title">Convert images</h1><p id="tool-description">Change the format. Keep the original.</p></div>
         <section class="work-panel" aria-labelledby="tool-title">
@@ -71,6 +72,11 @@
                 <dl class="setting-facts"><div><dt>Layout</dt><dd>One image per page</dd></div><div><dt>Orientation</dt><dd>Fits each image</dd></div></dl>
                 <p class="setting-note">Use the arrows beside each file to set the page order.</p>
                 <details class="output-details"><summary>Image quality</summary><p>Images are saved as JPEG at 92% quality, up to a 2400-pixel edge, with a white background. Text stays an image, not searchable text.</p></details>
+              </fieldset>
+              <fieldset id="normalize-options" hidden>
+                <legend>PDF normalization</legend>
+                <label class="checkbox-option"><input id="normalize-sketchy-only" type="checkbox" checked />Only repair sketchy filenames (.application.pdf, .app.pdf)</label>
+                <p class="setting-note">When enabled, DropZone will attempt to re-serialize or extract embedded PDF data to produce a normalized PDF copy.</p>
               </fieldset>
               <div id="zip-note" hidden>
                 <h2 class="settings-title">ZIP settings</h2>
